@@ -1,0 +1,90 @@
+{
+  "name": "shrimp-check",
+  "displayName": "Shrimp Check",
+  "description": "A playful VS Code extension that reminds you to fix your posture before you become a full crustacean.",
+  "version": "0.0.1",
+  "publisher": "Sheron Gibson",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "posture",
+    "health",
+    "reminder",
+    "productivity",
+    "funny",
+    "shrimp"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "onCommand:shrimpCheck.resetPosture",
+    "onCommand:shrimpCheck.snooze",
+    "onCommand:shrimpCheck.toggle"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "shrimpCheck.resetPosture",
+        "title": "Shrimp Check: Reset Posture Timer"
+      },
+      {
+        "command": "shrimpCheck.snooze",
+        "title": "Shrimp Check: Snooze 10 Minutes"
+      },
+      {
+        "command": "shrimpCheck.toggle",
+        "title": "Shrimp Check: Enable/Disable"
+      }
+    ],
+    "configuration": {
+      "title": "Shrimp Check",
+      "properties": {
+        "shrimpCheck.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable or disable Shrimp Check reminders."
+        },
+        "shrimpCheck.minMinutes": {
+          "type": "number",
+          "default": 30,
+          "minimum": 1,
+          "description": "Minimum number of minutes before a posture reminder."
+        },
+        "shrimpCheck.maxMinutes": {
+          "type": "number",
+          "default": 45,
+          "minimum": 1,
+          "description": "Maximum number of minutes before a posture reminder."
+        },
+        "shrimpCheck.warningFraction": {
+          "type": "number",
+          "default": 0.66,
+          "minimum": 0.1,
+          "maximum": 0.95,
+          "description": "Fraction of the cycle after which the warning state begins."
+        },
+        "shrimpCheck.showPopup": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a popup notification when it's time to fix your posture."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.39",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.7.1",
+    "typescript": "^5.9.3"
+  }
+}
