@@ -2,11 +2,18 @@
   "name": "shrimp-check",
   "displayName": "Shrimp Check",
   "description": "A playful VS Code extension that reminds you to fix your posture before you become a full crustacean.",
-  "version": "0.0.1",
-  "publisher": "Sheron Gibson",
+  "version": "0.0.2",
+  "publisher": "contractos",
+  "license": "MIT",
+  "icon": "images/shrimp-check-logo.png",
   "engines": {
     "vscode": "^1.85.0"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/coollifeclc/shrimpcheck.git"
+  },
+  "homepage": "https://github.com/coollifeclc/shrimpcheck",
   "categories": [
     "Other"
   ],
@@ -45,32 +52,23 @@
       "properties": {
         "shrimpCheck.enabled": {
           "type": "boolean",
-          "default": true,
-          "description": "Enable or disable Shrimp Check reminders."
+          "default": true
         },
         "shrimpCheck.minMinutes": {
           "type": "number",
-          "default": 30,
-          "minimum": 1,
-          "description": "Minimum number of minutes before a posture reminder."
+          "default": 30
         },
         "shrimpCheck.maxMinutes": {
           "type": "number",
-          "default": 45,
-          "minimum": 1,
-          "description": "Maximum number of minutes before a posture reminder."
+          "default": 45
         },
         "shrimpCheck.warningFraction": {
           "type": "number",
-          "default": 0.66,
-          "minimum": 0.1,
-          "maximum": 0.95,
-          "description": "Fraction of the cycle after which the warning state begins."
+          "default": 0.66
         },
         "shrimpCheck.showPopup": {
           "type": "boolean",
-          "default": true,
-          "description": "Show a popup notification when it's time to fix your posture."
+          "default": true
         }
       }
     }
@@ -83,7 +81,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.19.39",
-    "@types/vscode": "^1.85.0",
+    "@types/vscode": "1.85.0",
     "@vscode/vsce": "^3.7.1",
     "typescript": "^5.9.3"
   }

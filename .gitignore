@@ -1,9 +1,7 @@
 node_modules/
 dist/
-out/
 .vscode-test/
 *.vsix
 *.log
 *.tsbuildinfo
-# Ignore the .vscode directory, but not the .vscodeignore file
 .vscode/
