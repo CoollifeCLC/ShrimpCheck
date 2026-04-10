@@ -32,6 +32,10 @@
   "contributes": {
     "commands": [
       {
+        "command": "shrimpCheck.hydrationMenu",
+        "title": "Shrimp Check: Hydration Menu"
+      },
+      {
         "command": "shrimpCheck.resetPosture",
         "title": "Shrimp Check: Reset Posture Timer"
       },
