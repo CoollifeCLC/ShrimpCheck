@@ -26,10 +26,7 @@
     "shrimp"
   ],
   "activationEvents": [
-    "onStartupFinished",
-    "onCommand:shrimpCheck.resetPosture",
-    "onCommand:shrimpCheck.snooze",
-    "onCommand:shrimpCheck.toggle"
+    "onStartupFinished"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -56,11 +53,11 @@
         },
         "shrimpCheck.minMinutes": {
           "type": "number",
-          "default": 30
+          "default": 1
         },
         "shrimpCheck.maxMinutes": {
           "type": "number",
-          "default": 45
+          "default": 1
         },
         "shrimpCheck.warningFraction": {
           "type": "number",
@@ -69,6 +66,23 @@
         "shrimpCheck.showPopup": {
           "type": "boolean",
           "default": true
+        },
+        "shrimpCheck.cookedDelayMinutes": {
+          "type": "number",
+          "default": 1,
+          "minimum": 1,
+          "description": "Minutes after warning before you become cooked."
+        },
+        "shrimpCheck.hydrationEnabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable hydration reminders."
+        },
+        "shrimpCheck.hydrationMinutes": {
+          "type": "number",
+          "default": 1,
+          "minimum": 5,
+          "description": "Minutes between hydration reminders."
         }
       }
     }
