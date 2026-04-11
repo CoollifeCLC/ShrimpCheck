@@ -64,8 +64,8 @@
         },
         "shrimpCheck.maxMinutes": {
           "type": "number",
-          "default": 30,
-          "minimum": 30,
+          "default": 45,
+          "minimum": 45,
           "description": "Maximum number of minutes before a posture reminder."
         },
         "shrimpCheck.warningFraction": {
