@@ -58,14 +58,14 @@
         },
         "shrimpCheck.minMinutes": {
           "type": "number",
-          "default": 1,
-          "minimum": 1,
+          "default": 30,
+          "minimum": 30,
           "description": "Minimum number of minutes before a posture reminder."
         },
         "shrimpCheck.maxMinutes": {
           "type": "number",
-          "default": 1,
-          "minimum": 1,
+          "default": 30,
+          "minimum": 30,
           "description": "Maximum number of minutes before a posture reminder."
         },
         "shrimpCheck.warningFraction": {
@@ -82,19 +82,19 @@
         },
         "shrimpCheck.cookedDelayMinutes": {
           "type": "number",
-          "default": 1,
-          "minimum": 1,
+          "default": 10,
+          "minimum": 10,
           "description": "Minutes after the warning state before you become cooked."
         },
         "shrimpCheck.hydrationEnabled": {
           "type": "boolean",
-          "default": true,
+          "default": false,
           "description": "Enable hydration reminders."
         },
         "shrimpCheck.hydrationMinutes": {
           "type": "number",
-          "default": 0.5,
-          "minimum": 0.5,
+          "default": 45,
+          "minimum": 45,
           "description": "Minutes between hydration reminders."
         },
         "shrimpCheck.drink": {
