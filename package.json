@@ -53,29 +53,38 @@
       "properties": {
         "shrimpCheck.enabled": {
           "type": "boolean",
-          "default": true
+          "default": true,
+          "description": "Enable or disable Shrimp Check reminders."
         },
         "shrimpCheck.minMinutes": {
           "type": "number",
-          "default": 1
+          "default": 1,
+          "minimum": 1,
+          "description": "Minimum number of minutes before a posture reminder."
         },
         "shrimpCheck.maxMinutes": {
           "type": "number",
-          "default": 1
+          "default": 1,
+          "minimum": 1,
+          "description": "Maximum number of minutes before a posture reminder."
         },
         "shrimpCheck.warningFraction": {
           "type": "number",
-          "default": 0.66
+          "default": 0.66,
+          "minimum": 0.1,
+          "maximum": 0.95,
+          "description": "Fraction of the posture cycle after which the warning state begins."
         },
         "shrimpCheck.showPopup": {
           "type": "boolean",
-          "default": true
+          "default": true,
+          "description": "Show popup reminders for posture events."
         },
         "shrimpCheck.cookedDelayMinutes": {
           "type": "number",
           "default": 1,
           "minimum": 1,
-          "description": "Minutes after warning before you become cooked."
+          "description": "Minutes after the warning state before you become cooked."
         },
         "shrimpCheck.hydrationEnabled": {
           "type": "boolean",
@@ -87,6 +96,11 @@
           "default": 0.5,
           "minimum": 0.5,
           "description": "Minutes between hydration reminders."
+        },
+        "shrimpCheck.drink": {
+          "type": "string",
+          "default": "",
+          "description": "Your preferred coding beverage for hydration messages. Falls back to 'caffeine' if left blank."
         }
       }
     }

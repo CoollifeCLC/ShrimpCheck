@@ -142,7 +142,8 @@ function startCycle(): void {
     setStatus(
       '🟡 Shrimp forming...',
       `Current streak: ${getStreak()}. You’re about to get cooked. Fix your posture.`,
-      new vscode.ThemeColor('statusBarItem.warningBackground')
+      undefined,
+      new vscode.ThemeColor('statusBarItem.warningForeground')
     );
 
     if (showPopup) {
@@ -177,7 +178,8 @@ async function handleCookedState(showPopup: boolean): Promise<void> {
   setStatus(
     '🍤 Cooked - Un-Shrimp',
     'You ignored the shrimp… now you’re cooked! Stand up and stretch, your back will thank you.',
-    new vscode.ThemeColor('statusBarItem.errorBackground')
+    new vscode.ThemeColor('statusBarItem.errorBackground'),
+    new vscode.ThemeColor('statusBarItem.errorForeground')
   );
 
   if (!showPopup) {
@@ -219,7 +221,7 @@ function startHydrationCycle(): void {
 
   hydrationTimeout = setTimeout(async () => {
     const selection = await vscode.window.showInformationMessage(
-      '💧 Hydration check! Drink some water before you become 70% coffee.',
+      `💧 Hydration check! Drink some water before you become 70% ${getPreferredDrink()}.`,
       'Hydrated ✅',
       'Later',
       'Hydration Settings'
@@ -261,6 +263,10 @@ async function showHydrationMenu(): Promise<void> {
       {
         label: 'Set hydration to 60 minutes',
         description: hydrationMinutes === 60 ? 'Current' : undefined
+      },
+      {
+        label: 'Set custom drink',
+        description: `Current: ${getPreferredDrink()}`
       },
       {
         label: 'Test hydration notification now',
@@ -307,9 +313,22 @@ async function showHydrationMenu(): Promise<void> {
       vscode.window.showInformationMessage('💧 Hydration timer set to 60 minutes.');
       break;
 
+    case 'Set custom drink': {
+      const input = await vscode.window.showInputBox({
+        prompt: 'Enter your preferred coding beverage',
+        placeHolder: 'coffee, tea, matcha, energy drink...'
+      });
+
+      if (input !== undefined) {
+        await config.update('drink', input.trim(), vscode.ConfigurationTarget.Global);
+        vscode.window.showInformationMessage(`💧 Drink preference set to ${input.trim() || 'caffeine'}.`);
+      }
+      break;
+    }
+
     case 'Test hydration notification now':
       await vscode.window.showInformationMessage(
-        '💧 Hydration check! Drink some water before you become 70% coffee.'
+        `💧 Hydration check! Drink some water before you become 70% ${getPreferredDrink()}.`
       );
       break;
   }
@@ -320,12 +339,13 @@ async function showHydrationMenu(): Promise<void> {
 function setStatus(
   text: string,
   tooltip: string,
-  backgroundColor?: vscode.ThemeColor
+  backgroundColor?: vscode.ThemeColor,
+  foregroundColor?: vscode.ThemeColor
 ): void {
   statusBarItem.text = text;
   statusBarItem.tooltip = tooltip;
   statusBarItem.backgroundColor = backgroundColor;
-  statusBarItem.color = undefined;
+  statusBarItem.color = foregroundColor;
 }
 
 function clearPostureTimers(): void {
@@ -355,6 +375,12 @@ function randomBetween(min: number, max: number): number {
 
 function getStreak(): number {
   return extensionContext.globalState.get<number>('shrimpCheck.streak', 0);
+}
+
+function getPreferredDrink(): string {
+  const config = vscode.workspace.getConfiguration('shrimpCheck');
+  const rawDrink = config.get<string>('drink', '').trim();
+  return rawDrink.length > 0 ? rawDrink : 'caffeine';
 }
 
 async function incrementStreak(): Promise<void> {
