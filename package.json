@@ -2,7 +2,7 @@
   "name": "shrimp-check",
   "displayName": "Shrimp Check",
   "description": "A playful VS Code extension that reminds you to fix your posture before you become a full crustacean.",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "publisher": "contractos",
   "license": "MIT",
   "icon": "images/shrimp-check-logo.png",
