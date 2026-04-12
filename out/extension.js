@@ -6,6 +6,7 @@ const vscode = require("vscode");
 let statusBarItem;
 let warningTimeout;
 let cookedTimeout;
+let recoveryTimeout;
 let hydrationTimeout;
 let isEnabled = true;
 let currentState = 'ok';
@@ -20,15 +21,18 @@ function activate(context) {
             return;
         }
         if (currentState === 'warning') {
-            await incrementStreak();
-            vscode.window.showInformationMessage(`🫡 Posture corrected. Streak: ${getStreak()}`);
+            await handleRecovery();
+            return;
         }
-        else if (currentState === 'cooked') {
-            vscode.window.showInformationMessage('🍤 Recovery started. Start a new streak.');
+        if (currentState === 'cooked') {
+            vscode.window.showInformationMessage('🫡 Recovery started. New streak begins now.');
+            startCycle();
+            return;
         }
-        else {
-            vscode.window.showInformationMessage('🙂 Timer reset. No shrimp detected yet.');
+        if (currentState === 'recovery') {
+            return;
         }
+        vscode.window.showInformationMessage('🙂 Timer reset. No shrimp detected yet.');
         startCycle();
     });
     const snoozeCommand = vscode.commands.registerCommand('shrimpCheck.snooze', async () => {
@@ -36,11 +40,12 @@ function activate(context) {
             return;
         }
         clearPostureTimers();
-        setStatus('😌 Snoozed', `Current streak: ${getStreak()}. Shrimp Check snoozed for 5 minutes.`, undefined);
+        setStatus('😌 Snoozed', `Current streak: ${getStreak()}. Shrimp Check snoozed for 5 minutes.`, undefined, undefined);
         const selection = await vscode.window.showInformationMessage('😌 Shrimp Check snoozed for 5 minutes.', 'I’m up 😅');
         if (selection === 'I’m up 😅') {
             if (currentState === 'warning') {
-                await incrementStreak();
+                await handleRecovery();
+                return;
             }
             startCycle();
             return;
@@ -71,7 +76,7 @@ function refreshFromConfig() {
     clearAllTimers();
     if (!isEnabled) {
         currentState = 'ok';
-        setStatus('🚫 Shrimp Off', 'Shrimp Check is disabled.', undefined);
+        setStatus('🚫 Shrimp Off', 'Shrimp Check is disabled.', undefined, undefined);
         statusBarItem.show();
         return;
     }
@@ -94,16 +99,14 @@ function startCycle() {
     const totalMs = randomBetween(safeMin * 60000, safeMax * 60000);
     const warningMs = Math.floor(totalMs * warningFraction);
     const cookedMs = safeCookedDelay * 60000;
-    setStatus('🙂 Posture OK', `Current streak: ${getStreak()}. Shrimp Check is watching your spine. Click to reset.`, undefined);
+    setStatus('🙂 Posture OK', `Current streak: ${getStreak()}. Shrimp Check is watching your spine. Click to reset.`, undefined, undefined);
     warningTimeout = setTimeout(async () => {
         currentState = 'warning';
-        setStatus('🟡 Shrimp forming...', `Current streak: ${getStreak()}. You’re about to get cooked. Fix your posture.`, undefined, new vscode.ThemeColor('statusBarItem.warningForeground'));
+        setStatus('🟡 Shrimp forming...', `Current streak: ${getStreak()}. You’re about to get cooked. Check your posture.`, undefined, new vscode.ThemeColor('statusBarItem.warningForeground'));
         if (showPopup) {
             const selection = await vscode.window.showWarningMessage('🟡 Shrimp forming... you’re about to get cooked. Check your posture.', 'I’m up 😅', 'Give me 5 min');
             if (selection === 'I’m up 😅') {
-                await incrementStreak();
-                vscode.window.showInformationMessage(`🔥 Spine strong. Streak: ${getStreak()}`);
-                startCycle();
+                await handleRecovery();
                 return;
             }
             if (selection === 'Give me 5 min') {
@@ -115,16 +118,27 @@ function startCycle() {
         await handleCookedState(showPopup);
     }, totalMs + cookedMs);
 }
+async function handleRecovery() {
+    clearPostureTimers();
+    currentState = 'recovery';
+    await incrementStreak();
+    setStatus('🦐 Un-Shrimp', `Streak: ${getStreak()}. You corrected in time.`, undefined, new vscode.ThemeColor('statusBarItem.prominentForeground'));
+    vscode.window.showInformationMessage(`🦐 Un-shrimped. Streak: ${getStreak()}`);
+    recoveryTimeout = setTimeout(() => {
+        startCycle();
+    }, 2000);
+}
 async function handleCookedState(showPopup) {
+    clearPostureTimers();
     currentState = 'cooked';
     await resetStreak();
-    setStatus('🍤 Cooked - Un-Shrimp', 'You ignored the shrimp… now you’re cooked! Stand up and stretch, your back will thank you.', new vscode.ThemeColor('statusBarItem.errorBackground'), new vscode.ThemeColor('statusBarItem.errorForeground'));
+    setStatus('🍤 Cooked', 'You ignored the shrimp too long. Streak broken. Stand up and stretch.', new vscode.ThemeColor('statusBarItem.errorBackground'), new vscode.ThemeColor('statusBarItem.errorForeground'));
     if (!showPopup) {
         return;
     }
-    const selection = await vscode.window.showErrorMessage('🍤 You ignored the shrimp… now you’re cooked! Stand up and stretch, your back will thank you.', 'I’m up 😅', 'Give me 5 min');
+    const selection = await vscode.window.showErrorMessage('🍤 You ignored the shrimp too long. Streak broken. Stand up and stretch.', 'I’m up 😅', 'Give me 5 min');
     if (selection === 'I’m up 😅') {
-        vscode.window.showInformationMessage('🫡 Recovery complete. Start a new streak.');
+        vscode.window.showInformationMessage('🫡 Back on your feet. New cycle started.');
         startCycle();
         return;
     }
@@ -147,7 +161,7 @@ function startHydrationCycle() {
     hydrationTimeout = setTimeout(async () => {
         const selection = await vscode.window.showInformationMessage(`💧 Hydration check! Drink some water before you become 70% ${getPreferredDrink()}.`, 'Hydrated ✅', 'Later', 'Hydration Settings');
         if (selection === 'Hydrated ✅') {
-            vscode.window.showInformationMessage('💧 Nice. The shrimp remains hydrated.');
+            vscode.window.showInformationMessage('💧 Nice. Stay hydrated.');
         }
         else if (selection === 'Hydration Settings') {
             await vscode.commands.executeCommand('shrimpCheck.hydrationMenu');
@@ -194,29 +208,30 @@ async function showHydrationMenu() {
     if (!selection) {
         return;
     }
+    const configTarget = vscode.ConfigurationTarget.Global;
     switch (selection.label) {
         case 'Enable Hydration Checks':
-            await config.update('hydrationEnabled', true, vscode.ConfigurationTarget.Global);
+            await config.update('hydrationEnabled', true, configTarget);
             vscode.window.showInformationMessage('💧 Hydration checks enabled.');
             break;
         case 'Disable Hydration Checks':
-            await config.update('hydrationEnabled', false, vscode.ConfigurationTarget.Global);
+            await config.update('hydrationEnabled', false, configTarget);
             vscode.window.showInformationMessage('💧 Hydration checks disabled.');
             break;
         case 'Set hydration to 15 minutes':
-            await config.update('hydrationMinutes', 15, vscode.ConfigurationTarget.Global);
+            await config.update('hydrationMinutes', 15, configTarget);
             vscode.window.showInformationMessage('💧 Hydration timer set to 15 minutes.');
             break;
         case 'Set hydration to 30 minutes':
-            await config.update('hydrationMinutes', 30, vscode.ConfigurationTarget.Global);
+            await config.update('hydrationMinutes', 30, configTarget);
             vscode.window.showInformationMessage('💧 Hydration timer set to 30 minutes.');
             break;
         case 'Set hydration to 45 minutes':
-            await config.update('hydrationMinutes', 45, vscode.ConfigurationTarget.Global);
+            await config.update('hydrationMinutes', 45, configTarget);
             vscode.window.showInformationMessage('💧 Hydration timer set to 45 minutes.');
             break;
         case 'Set hydration to 60 minutes':
-            await config.update('hydrationMinutes', 60, vscode.ConfigurationTarget.Global);
+            await config.update('hydrationMinutes', 60, configTarget);
             vscode.window.showInformationMessage('💧 Hydration timer set to 60 minutes.');
             break;
         case 'Set custom drink': {
@@ -225,8 +240,9 @@ async function showHydrationMenu() {
                 placeHolder: 'coffee, tea, matcha, energy drink...'
             });
             if (input !== undefined) {
-                await config.update('drink', input.trim(), vscode.ConfigurationTarget.Global);
-                vscode.window.showInformationMessage(`💧 Drink preference set to ${input.trim() || 'caffeine'}.`);
+                const trimmed = input.trim();
+                await config.update('drink', trimmed, configTarget);
+                vscode.window.showInformationMessage(`💧 Drink preference set to ${trimmed || 'caffeine'}.`);
             }
             break;
         }
@@ -250,6 +266,10 @@ function clearPostureTimers() {
     if (cookedTimeout) {
         clearTimeout(cookedTimeout);
         cookedTimeout = undefined;
+    }
+    if (recoveryTimeout) {
+        clearTimeout(recoveryTimeout);
+        recoveryTimeout = undefined;
     }
 }
 function clearAllTimers() {
