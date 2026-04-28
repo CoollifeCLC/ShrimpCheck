@@ -17,13 +17,15 @@ export function activate(context: vscode.ExtensionContext): void {
   extensionContext = context;
 
   statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-  statusBarItem.command = 'shrimpCheck.resetPosture';
+  statusBarItem.command = 'shrimpCheck.openQuickMenu';
   context.subscriptions.push(statusBarItem);
 
+  const quickMenuCommand = vscode.commands.registerCommand('shrimpCheck.openQuickMenu', async () => {
+    await showQuickMenu();
+  });
+
   const resetCommand = vscode.commands.registerCommand('shrimpCheck.resetPosture', async () => {
-    if (!isEnabled) {
-      return;
-    }
+    if (!isEnabled) return;
 
     if (currentState === 'warning') {
       await handleRecovery();
@@ -36,27 +38,18 @@ export function activate(context: vscode.ExtensionContext): void {
       return;
     }
 
-    if (currentState === 'recovery') {
-      return;
-    }
+    if (currentState === 'recovery') return;
 
     vscode.window.showInformationMessage('🙂 Timer reset. No shrimp detected yet.');
     startCycle();
   });
 
   const snoozeCommand = vscode.commands.registerCommand('shrimpCheck.snooze', async () => {
-    if (!isEnabled) {
-      return;
-    }
+    if (!isEnabled) return;
 
     clearPostureTimers();
 
-    setStatus(
-      '😌 Snoozed',
-      `Current streak: ${getStreak()}. Shrimp Check snoozed for 5 minutes.`,
-      undefined,
-      undefined
-    );
+    setStatus('😌 Snoozed', 'Shrimp Check snoozed for 5 minutes.');
 
     const selection = await vscode.window.showInformationMessage(
       '😌 Shrimp Check snoozed for 5 minutes.',
@@ -88,6 +81,14 @@ export function activate(context: vscode.ExtensionContext): void {
     await showHydrationMenu();
   });
 
+  const timerMenuCommand = vscode.commands.registerCommand('shrimpCheck.timerMenu', async () => {
+    await showTimerMenu();
+  });
+
+  const openSettingsCommand = vscode.commands.registerCommand('shrimpCheck.openSettings', async () => {
+    await vscode.commands.executeCommand('workbench.action.openSettings', 'shrimpCheck');
+  });
+
   const configListener = vscode.workspace.onDidChangeConfiguration((event) => {
     if (event.affectsConfiguration('shrimpCheck')) {
       refreshFromConfig();
@@ -95,10 +96,13 @@ export function activate(context: vscode.ExtensionContext): void {
   });
 
   context.subscriptions.push(
+    quickMenuCommand,
     resetCommand,
     snoozeCommand,
     toggleCommand,
     hydrationMenuCommand,
+    timerMenuCommand,
+    openSettingsCommand,
     configListener
   );
 
@@ -113,7 +117,7 @@ function refreshFromConfig(): void {
 
   if (!isEnabled) {
     currentState = 'ok';
-    setStatus('🚫 Shrimp Off', 'Shrimp Check is disabled.', undefined, undefined);
+    setStatus('🚫 Shrimp Off', 'Shrimp Check is disabled.');
     statusBarItem.show();
     return;
   }
@@ -144,9 +148,7 @@ function startCycle(): void {
 
   setStatus(
     '🙂 Posture OK',
-    `Current streak: ${getStreak()}. Shrimp Check is watching your spine. Click to reset.`,
-    undefined,
-    undefined
+    `Current streak: ${getStreak()}. Shrimp Check is watching your spine. Click for quick settings.`
   );
 
   warningTimeout = setTimeout(async () => {
@@ -154,14 +156,14 @@ function startCycle(): void {
 
     setStatus(
       '🟡 Shrimp forming...',
-      `Current streak: ${getStreak()}. You’re about to get cooked. Check your posture.`,
+      `Current streak: ${getStreak()}. You may or may not be a shrimp right now 🦐…`,
       undefined,
       new vscode.ThemeColor('statusBarItem.warningForeground')
     );
 
     if (showPopup) {
       const selection = await vscode.window.showWarningMessage(
-        '🟡 Shrimp forming... you’re about to get cooked. Check your posture.',
+        '🟡 You may or may not be a shrimp right now 🦐… Check your posture.',
         'I’m up 😅',
         'Give me 5 min'
       );
@@ -206,19 +208,20 @@ async function handleCookedState(showPopup: boolean): Promise<void> {
   currentState = 'cooked';
   await resetStreak();
 
+  const cookedMessage =
+    '🍤 The shrimp may have gotten the best of you this time… Streak reset. Let’s stand up and recover.';
+
   setStatus(
     '🍤 Cooked',
-    'You ignored the shrimp too long. Streak broken. Stand up and stretch.',
+    cookedMessage,
     new vscode.ThemeColor('statusBarItem.errorBackground'),
     new vscode.ThemeColor('statusBarItem.errorForeground')
   );
 
-  if (!showPopup) {
-    return;
-  }
+  if (!showPopup) return;
 
   const selection = await vscode.window.showErrorMessage(
-    '🍤 You ignored the shrimp too long. Streak broken. Stand up and stretch.',
+    cookedMessage,
     'I’m up 😅',
     'Give me 5 min'
   );
@@ -234,6 +237,200 @@ async function handleCookedState(showPopup: boolean): Promise<void> {
   }
 }
 
+async function showQuickMenu(): Promise<void> {
+  const config = vscode.workspace.getConfiguration('shrimpCheck');
+  const enabled = config.get<boolean>('enabled', true);
+  const minMinutes = config.get<number>('minMinutes', 30);
+  const maxMinutes = config.get<number>('maxMinutes', 45);
+  const cookedDelayMinutes = config.get<number>('cookedDelayMinutes', 10);
+  const hydrationEnabled = config.get<boolean>('hydrationEnabled', false);
+
+  const selection = await vscode.window.showQuickPick(
+    [
+      {
+        label: 'Reset posture timer',
+        description: 'Start a fresh Shrimp Check cycle'
+      },
+      {
+        label: 'Snooze for 5 minutes',
+        description: 'Pause posture reminders briefly'
+      },
+      {
+        label: 'Adjust posture timer',
+        description: `Current: ${minMinutes}-${maxMinutes} minutes`
+      },
+      {
+        label: 'Adjust cooked delay',
+        description: `Current: ${cookedDelayMinutes} minutes after warning`
+      },
+      {
+        label: 'Hydration settings',
+        description: `Currently ${hydrationEnabled ? 'On' : 'Off'}`
+      },
+      {
+        label: enabled ? 'Disable Shrimp Check' : 'Enable Shrimp Check',
+        description: `Currently ${enabled ? 'On' : 'Off'}`
+      },
+      {
+        label: 'Open full settings',
+        description: 'Open VS Code settings for Shrimp Check'
+      }
+    ],
+    {
+      placeHolder: 'Shrimp Check quick settings 🦐'
+    }
+  );
+
+  if (!selection) return;
+
+  switch (selection.label) {
+    case 'Reset posture timer':
+      await vscode.commands.executeCommand('shrimpCheck.resetPosture');
+      break;
+
+    case 'Snooze for 5 minutes':
+      await vscode.commands.executeCommand('shrimpCheck.snooze');
+      break;
+
+    case 'Adjust posture timer':
+      await showTimerMenu();
+      break;
+
+    case 'Adjust cooked delay':
+      await showCookedDelayMenu();
+      break;
+
+    case 'Hydration settings':
+      await showHydrationMenu();
+      break;
+
+    case 'Disable Shrimp Check':
+    case 'Enable Shrimp Check':
+      await vscode.commands.executeCommand('shrimpCheck.toggle');
+      break;
+
+    case 'Open full settings':
+      await vscode.commands.executeCommand('shrimpCheck.openSettings');
+      break;
+  }
+}
+
+async function showTimerMenu(): Promise<void> {
+  const config = vscode.workspace.getConfiguration('shrimpCheck');
+  const configTarget = vscode.ConfigurationTarget.Global;
+
+  const selection = await vscode.window.showQuickPick(
+    [
+      {
+        label: 'Quick check: 15-25 minutes',
+        min: 15,
+        max: 25
+      },
+      {
+        label: 'Balanced: 30-45 minutes',
+        min: 30,
+        max: 45
+      },
+      {
+        label: 'Deep work: 45-60 minutes',
+        min: 45,
+        max: 60
+      },
+      {
+        label: 'Custom timer range',
+        min: undefined,
+        max: undefined
+      }
+    ],
+    {
+      placeHolder: 'Choose Shrimp Check timer duration'
+    }
+  );
+
+  if (!selection) return;
+
+  if (selection.label === 'Custom timer range') {
+    const input = await vscode.window.showInputBox({
+      prompt: 'Enter min and max minutes separated by a dash',
+      placeHolder: 'Example: 25-40'
+    });
+
+    if (!input) return;
+
+    const [rawMin, rawMax] = input.split('-').map((value) => Number(value.trim()));
+    const safeMin = Number.isFinite(rawMin) ? Math.max(1, rawMin) : 30;
+    const safeMax = Number.isFinite(rawMax) ? Math.max(safeMin, rawMax) : safeMin;
+
+    await config.update('minMinutes', safeMin, configTarget);
+    await config.update('maxMinutes', safeMax, configTarget);
+
+    vscode.window.showInformationMessage(`🦐 Posture timer set to ${safeMin}-${safeMax} minutes.`);
+    refreshFromConfig();
+    return;
+  }
+
+  await config.update('minMinutes', selection.min, configTarget);
+  await config.update('maxMinutes', selection.max, configTarget);
+
+  vscode.window.showInformationMessage(
+    `🦐 Posture timer set to ${selection.min}-${selection.max} minutes.`
+  );
+
+  refreshFromConfig();
+}
+
+async function showCookedDelayMenu(): Promise<void> {
+  const config = vscode.workspace.getConfiguration('shrimpCheck');
+  const configTarget = vscode.ConfigurationTarget.Global;
+
+  const selection = await vscode.window.showQuickPick(
+    [
+      {
+        label: '5 minutes',
+        value: 5
+      },
+      {
+        label: '10 minutes',
+        value: 10
+      },
+      {
+        label: '15 minutes',
+        value: 15
+      },
+      {
+        label: 'Custom delay',
+        value: undefined
+      }
+    ],
+    {
+      placeHolder: 'How long after warning before cooked mode?'
+    }
+  );
+
+  if (!selection) return;
+
+  if (selection.label === 'Custom delay') {
+    const input = await vscode.window.showInputBox({
+      prompt: 'Enter cooked delay in minutes',
+      placeHolder: 'Example: 10'
+    });
+
+    if (!input) return;
+
+    const parsed = Number(input.trim());
+    const safeDelay = Number.isFinite(parsed) ? Math.max(1, parsed) : 10;
+
+    await config.update('cookedDelayMinutes', safeDelay, configTarget);
+    vscode.window.showInformationMessage(`🍤 Cooked delay set to ${safeDelay} minutes.`);
+    refreshFromConfig();
+    return;
+  }
+
+  await config.update('cookedDelayMinutes', selection.value, configTarget);
+  vscode.window.showInformationMessage(`🍤 Cooked delay set to ${selection.value} minutes.`);
+  refreshFromConfig();
+}
+
 function startHydrationCycle(): void {
   if (hydrationTimeout) {
     clearTimeout(hydrationTimeout);
@@ -244,9 +441,7 @@ function startHydrationCycle(): void {
   const hydrationEnabled = config.get<boolean>('hydrationEnabled', false);
   const hydrationMinutes = config.get<number>('hydrationMinutes', 45);
 
-  if (!hydrationEnabled) {
-    return;
-  }
+  if (!hydrationEnabled) return;
 
   const safeHydrationMinutes = Math.max(1, hydrationMinutes);
 
@@ -309,9 +504,7 @@ async function showHydrationMenu(): Promise<void> {
     }
   );
 
-  if (!selection) {
-    return;
-  }
+  if (!selection) return;
 
   const configTarget = vscode.ConfigurationTarget.Global;
 
@@ -374,14 +567,47 @@ async function showHydrationMenu(): Promise<void> {
 
 function setStatus(
   text: string,
-  tooltip: string,
+  tooltipText: string,
   backgroundColor?: vscode.ThemeColor,
   foregroundColor?: vscode.ThemeColor
 ): void {
   statusBarItem.text = text;
-  statusBarItem.tooltip = tooltip;
+  statusBarItem.tooltip = createShrimpTooltip(tooltipText);
   statusBarItem.backgroundColor = backgroundColor;
   statusBarItem.color = foregroundColor;
+}
+
+function createShrimpTooltip(message: string): vscode.MarkdownString {
+  const config = vscode.workspace.getConfiguration('shrimpCheck');
+  const minMinutes = config.get<number>('minMinutes', 30);
+  const maxMinutes = config.get<number>('maxMinutes', 45);
+  const cookedDelayMinutes = config.get<number>('cookedDelayMinutes', 10);
+  const hydrationEnabled = config.get<boolean>('hydrationEnabled', false);
+  const hydrationMinutes = config.get<number>('hydrationMinutes', 45);
+
+  const tooltip = new vscode.MarkdownString();
+  tooltip.isTrusted = true;
+  tooltip.supportHtml = true;
+
+  tooltip.appendMarkdown(`### Shrimp Check 🦐\n\n`);
+  tooltip.appendMarkdown(`${message}\n\n`);
+  tooltip.appendMarkdown(`**State:** ${currentState}\n\n`);
+  tooltip.appendMarkdown(`**Streak:** ${getStreak()}\n\n`);
+  tooltip.appendMarkdown(`**Posture Timer:** ${minMinutes}-${maxMinutes} min\n\n`);
+  tooltip.appendMarkdown(`**Cooked Delay:** ${cookedDelayMinutes} min\n\n`);
+  tooltip.appendMarkdown(
+    `**Hydration:** ${hydrationEnabled ? `On, every ${hydrationMinutes} min` : 'Off'}\n\n`
+  );
+
+  tooltip.appendMarkdown(`---\n\n`);
+  tooltip.appendMarkdown(`[Open Quick Menu](command:shrimpCheck.openQuickMenu)\n\n`);
+  tooltip.appendMarkdown(`[Reset Timer](command:shrimpCheck.resetPosture)  \n`);
+  tooltip.appendMarkdown(`[Snooze 5 Min](command:shrimpCheck.snooze)  \n`);
+  tooltip.appendMarkdown(`[Adjust Timers](command:shrimpCheck.timerMenu)  \n`);
+  tooltip.appendMarkdown(`[Hydration Settings](command:shrimpCheck.hydrationMenu)  \n`);
+  tooltip.appendMarkdown(`[Open Full Settings](command:shrimpCheck.openSettings)\n`);
+
+  return tooltip;
 }
 
 function clearPostureTimers(): void {

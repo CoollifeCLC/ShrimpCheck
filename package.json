@@ -32,6 +32,18 @@
   "contributes": {
     "commands": [
       {
+        "command": "shrimpCheck.openQuickMenu",
+        "title": "Shrimp Check: Open Quick Menu"
+      },
+      {
+        "command": "shrimpCheck.timerMenu",
+        "title": "Shrimp Check: Timer Settings"
+      },
+      {
+        "command": "shrimpCheck.openSettings",
+        "title": "Shrimp Check: Open Settings"
+      },
+      {
         "command": "shrimpCheck.hydrationMenu",
         "title": "Shrimp Check: Hydration Menu"
       },
