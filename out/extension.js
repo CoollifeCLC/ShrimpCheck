@@ -105,7 +105,7 @@ function startCycle() {
     const totalMs = randomBetween(safeMin * 60000, safeMax * 60000);
     const warningMs = Math.floor(totalMs * warningFraction);
     const cookedMs = safeCookedDelay * 60000;
-    setStatus('🙂 Posture OK', `Current streak: ${getStreak()}. Shrimp Check is watching your spine. Click for quick settings.`);
+    setStatus('🙂 Posture OK', `Current streak: ${getStreak()}. Monitoring posture… stay sharp 🦐 Click for quick settings.`);
     warningTimeout = setTimeout(async () => {
         currentState = 'warning';
         setStatus('🟡 Shrimp forming...', `Current streak: ${getStreak()}. You may or may not be a shrimp right now 🦐…`, undefined, new vscode.ThemeColor('statusBarItem.warningForeground'));
@@ -428,23 +428,50 @@ function createShrimpTooltip(message) {
     const cookedDelayMinutes = config.get('cookedDelayMinutes', 10);
     const hydrationEnabled = config.get('hydrationEnabled', false);
     const hydrationMinutes = config.get('hydrationMinutes', 45);
+    const showPopup = config.get('showPopup', true);
+    const enabled = config.get('enabled', true);
+    const streak = getStreak();
+    const stateLabel = currentState === 'ok'
+        ? 'Posture OK'
+        : currentState === 'warning'
+            ? 'Shrimp forming'
+            : currentState === 'recovery'
+                ? 'Recovering'
+                : 'Cooked';
+    const stateIcon = currentState === 'ok'
+        ? '🙂'
+        : currentState === 'warning'
+            ? '🟡'
+            : currentState === 'recovery'
+                ? '🦐'
+                : '🍤';
     const tooltip = new vscode.MarkdownString();
     tooltip.isTrusted = true;
     tooltip.supportHtml = true;
-    tooltip.appendMarkdown(`### Shrimp Check 🦐\n\n`);
+    tooltip.appendMarkdown(`### 🦐 Shrimp Check\n\n`);
+    tooltip.appendMarkdown(`_Tiny posture guard for developers._\n\n`);
     tooltip.appendMarkdown(`${message}\n\n`);
-    tooltip.appendMarkdown(`**State:** ${currentState}\n\n`);
-    tooltip.appendMarkdown(`**Streak:** ${getStreak()}\n\n`);
-    tooltip.appendMarkdown(`**Posture Timer:** ${minMinutes}-${maxMinutes} min\n\n`);
-    tooltip.appendMarkdown(`**Cooked Delay:** ${cookedDelayMinutes} min\n\n`);
-    tooltip.appendMarkdown(`**Hydration:** ${hydrationEnabled ? `On, every ${hydrationMinutes} min` : 'Off'}\n\n`);
     tooltip.appendMarkdown(`---\n\n`);
-    tooltip.appendMarkdown(`[Open Quick Menu](command:shrimpCheck.openQuickMenu)\n\n`);
+    tooltip.appendMarkdown(`**📊 Status**\n\n`);
+    tooltip.appendMarkdown(`- ${enabled ? '☑' : '☐'} **Enabled:** ${enabled ? 'On' : 'Off'}\n`);
+    tooltip.appendMarkdown(`- ${stateIcon} **State:** ${stateLabel}\n`);
+    tooltip.appendMarkdown(`- 🔥 **Streak:** ${streak}\n\n`);
+    tooltip.appendMarkdown(`**⏱ Timers**\n\n`);
+    tooltip.appendMarkdown(`- ☑ **Posture Timer:** ${minMinutes}-${maxMinutes} min\n`);
+    tooltip.appendMarkdown(`- ☑ **Cooked Delay:** ${cookedDelayMinutes} min\n`);
+    tooltip.appendMarkdown(`- ${showPopup ? '☑' : '☐'} **Popups:** ${showPopup ? 'On' : 'Off'}\n`);
+    tooltip.appendMarkdown(`- ${hydrationEnabled ? '☑' : '☐'} **Hydration:** ${hydrationEnabled ? `Every ${hydrationMinutes} min` : 'Off'}\n\n`);
+    tooltip.appendMarkdown(`---\n\n`);
+    tooltip.appendMarkdown(`**⚡ Quick Actions**\n\n`);
+    tooltip.appendMarkdown(`[Open Quick Menu](command:shrimpCheck.openQuickMenu)  \n`);
     tooltip.appendMarkdown(`[Reset Timer](command:shrimpCheck.resetPosture)  \n`);
-    tooltip.appendMarkdown(`[Snooze 5 Min](command:shrimpCheck.snooze)  \n`);
+    tooltip.appendMarkdown(`[Snooze 5 Min](command:shrimpCheck.snooze)\n\n`);
+    tooltip.appendMarkdown(`**🛠 Settings**\n\n`);
     tooltip.appendMarkdown(`[Adjust Timers](command:shrimpCheck.timerMenu)  \n`);
     tooltip.appendMarkdown(`[Hydration Settings](command:shrimpCheck.hydrationMenu)  \n`);
     tooltip.appendMarkdown(`[Open Full Settings](command:shrimpCheck.openSettings)\n`);
+    tooltip.appendMarkdown(`\n---\n`);
+    tooltip.appendMarkdown(`_Stay productive. Stay hydrated. Don’t become the shrimp._`);
     return tooltip;
 }
 function clearPostureTimers() {
