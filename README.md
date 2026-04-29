@@ -1,58 +1,95 @@
-# Shrimp Check 🦐
+# 🦐 Shrimp Check
 
 <p align="center">
   <img src="https://img.shields.io/badge/VS%20Code-Extension-007ACC?logo=visualstudiocode" />
   <img src="https://img.shields.io/badge/Built%20by-Contract%20OS-2A0B3D" />
-  <img src="https://img.shields.io/badge/Conversion-100%25%2B-22C55E" />
+  <img src="https://img.shields.io/badge/Users-100%2B-22C55E" />
 </p>
 
-A playful VS Code extension that reminds you to fix your posture before you become a full crustacean.
+<p align="center">
+  A developer-friendly posture reminder that keeps you out of shrimp mode 🦐  
+  with live feedback, quick controls, and zero friction.
+</p>
 
 ---
 
-## Features
+## ✨ What makes it different?
 
-- Timed posture reminders
-- Status bar indicator with live state
-- Warning → recovery → cooked system
-- Streak tracking for consistent posture resets
-- Snooze support (quick delay)
-- Optional hydration reminders (customizable drink)
+Most reminder tools interrupt you.
+
+**Shrimp Check works with your flow:**
+- Hover → see everything instantly
+- Click → adjust settings in seconds
+- No commands, no digging through menus
 
 ---
 
-## States
+## ⚙️ Features
+
+- ⏱ Smart posture reminders (30–45 min default)
+- 🧠 Live **hover panel** (stats + quick actions)
+- ⚡ **Quick menu** for instant control
+- 🟡 Warning → 🍤 Cooked system
+- 🔥 Streak tracking (don’t break it)
+- 😌 Snooze support
+- 💧 Optional hydration reminders (custom drink)
+
+---
+
+## 🧭 How it works
+
+### Status Bar (bottom right)
 
 - 🙂 **Posture OK**
 - 🟡 **Shrimp forming...**
-- 🦐 **Un-Shrimp** — recovered in time, streak saved
-- 🍤 **Cooked** — ignored too long, streak broken
+- 🍤 **Cooked**
 
 ---
 
-## Commands
+### Interactions
 
-- `Shrimp Check: Reset Posture Timer`
-- `Shrimp Check: Snooze`
-- `Shrimp Check: Enable/Disable`
-- `Shrimp Check: Hydration Menu`
+- **Hover** → View stats + quick actions  
+- **Click** → Open quick settings menu  
 
 ---
 
-## Extension Settings
+## ⚡ Quick Menu
 
-This extension contributes the following settings:
+Instant access to:
 
-- `shrimpCheck.enabled`
-- `shrimpCheck.minMinutes`
-- `shrimpCheck.maxMinutes`
-- `shrimpCheck.warningFraction`
-- `shrimpCheck.showPopup`
-- `shrimpCheck.cookedDelayMinutes`
-- `shrimpCheck.hydrationEnabled`
-- `shrimpCheck.hydrationMinutes`
-- `shrimpCheck.drink`
+- Reset posture timer
+- Snooze reminders
+- Adjust timers
+- Adjust cooked delay
+- Hydration settings
+- Enable / Disable extension
 
 ---
+
+## 🧠 Example Messages
+
+- “You may or may not be a shrimp right now 🦐…”
+- “Shrimp forming… check your posture.”
+- “The shrimp may have gotten the best of you this time…”
+
+---
+
+Customize:
+
+Reminder timing
+Warning threshold
+Cooked delay
+Hydration frequency
+Preferred drink ☕
+
+📈 Growth
 
 Built with mild concern for your spine.
+
+Now helping 100+ developers avoid becoming shrimp 🦐
+
+🦐 Shrimp Here!
+
+Stay productive.
+Stay hydrated.
+Don’t get cooked!.
