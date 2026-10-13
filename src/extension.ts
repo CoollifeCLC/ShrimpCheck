@@ -1,12 +1,29 @@
 import * as vscode from 'vscode';
 
-type ShrimpState = 'ok' | 'warning' | 'recovery' | 'cooked';
+type ShrimpState = 'ok' | 'warning' | 'recovery' | 'cooked' | 'snoozed';
+
+const STATUS_ICONS = {
+  ok: '$(shrimp-ok)',
+  warning: '$(shrimp-warning)',
+  cooked: '$(shrimp-cooked)'
+};
+const SNOOZE_MINUTES = 5;
+const SNOOZE_MS = SNOOZE_MINUTES * 60_000;
+const TRUSTED_TOOLTIP_COMMANDS = [
+  'shrimpCheck.openQuickMenu',
+  'shrimpCheck.resetPosture',
+  'shrimpCheck.snooze',
+  'shrimpCheck.timerMenu',
+  'shrimpCheck.hydrationMenu',
+  'shrimpCheck.openSettings'
+];
 
 let statusBarItem: vscode.StatusBarItem;
 
 let warningTimeout: ReturnType<typeof setTimeout> | undefined;
 let cookedTimeout: ReturnType<typeof setTimeout> | undefined;
 let recoveryTimeout: ReturnType<typeof setTimeout> | undefined;
+let snoozeTimeout: ReturnType<typeof setTimeout> | undefined;
 let hydrationTimeout: ReturnType<typeof setTimeout> | undefined;
 
 let isEnabled = true;
@@ -47,17 +64,19 @@ export function activate(context: vscode.ExtensionContext): void {
   const snoozeCommand = vscode.commands.registerCommand('shrimpCheck.snooze', async () => {
     if (!isEnabled) return;
 
+    const stateBeforeSnooze = currentState;
     clearPostureTimers();
+    currentState = 'snoozed';
 
-    setStatus('😌 Snoozed', 'Shrimp Check snoozed for 5 minutes.');
+    setStatus('😌 Snoozed', `Shrimp Check snoozed for ${SNOOZE_MINUTES} minutes.`);
 
     const selection = await vscode.window.showInformationMessage(
-      '😌 Shrimp Check snoozed for 5 minutes.',
+      `😌 Shrimp Check snoozed for ${SNOOZE_MINUTES} minutes.`,
       'I’m up 😅'
     );
 
     if (selection === 'I’m up 😅') {
-      if (currentState === 'warning') {
+      if (stateBeforeSnooze === 'warning') {
         await handleRecovery();
         return;
       }
@@ -66,15 +85,15 @@ export function activate(context: vscode.ExtensionContext): void {
       return;
     }
 
-    cookedTimeout = setTimeout(() => {
+    snoozeTimeout = setTimeout(() => {
       startCycle();
-    }, 5 * 60 * 1000);
+    }, SNOOZE_MS);
   });
 
   const toggleCommand = vscode.commands.registerCommand('shrimpCheck.toggle', async () => {
     const config = vscode.workspace.getConfiguration('shrimpCheck');
     const current = config.get<boolean>('enabled', true);
-    await config.update('enabled', !current, vscode.ConfigurationTarget.Global);
+    await updateShrimpConfig(config, 'enabled', !current);
   });
 
   const hydrationMenuCommand = vscode.commands.registerCommand('shrimpCheck.hydrationMenu', async () => {
@@ -147,19 +166,24 @@ function startCycle(): void {
   const cookedMs = safeCookedDelay * 60_000;
 
   setStatus(
-    '🙂 Posture OK',
+    `${STATUS_ICONS.ok} Posture OK`,
     `Current streak: ${getStreak()}. Monitoring posture… stay sharp 🦐 Click for quick settings.`
   );
 
   warningTimeout = setTimeout(async () => {
+    warningTimeout = undefined;
     currentState = 'warning';
 
     setStatus(
-      '🟡 Shrimp forming...',
+      `${STATUS_ICONS.warning} Shrimp forming...`,
       `Current streak: ${getStreak()}. You may or may not be a shrimp right now 🦐…`,
       undefined,
       new vscode.ThemeColor('statusBarItem.warningForeground')
     );
+
+    cookedTimeout = setTimeout(async () => {
+      await handleCookedState(showPopup);
+    }, cookedMs);
 
     if (showPopup) {
       const selection = await vscode.window.showWarningMessage(
@@ -167,6 +191,8 @@ function startCycle(): void {
         'I’m up 😅',
         'Give me 5 min'
       );
+
+      if (currentState !== 'warning') return;
 
       if (selection === 'I’m up 😅') {
         await handleRecovery();
@@ -178,10 +204,6 @@ function startCycle(): void {
       }
     }
   }, warningMs);
-
-  cookedTimeout = setTimeout(async () => {
-    await handleCookedState(showPopup);
-  }, totalMs + cookedMs);
 }
 
 async function handleRecovery(): Promise<void> {
@@ -190,7 +212,7 @@ async function handleRecovery(): Promise<void> {
   await incrementStreak();
 
   setStatus(
-    '🦐 Un-Shrimp',
+    `${STATUS_ICONS.ok} Un-Shrimp`,
     `Streak: ${getStreak()}. You corrected in time.`,
     undefined,
     new vscode.ThemeColor('statusBarItem.prominentForeground')
@@ -212,7 +234,7 @@ async function handleCookedState(showPopup: boolean): Promise<void> {
     '🍤 The shrimp may have gotten the best of you this time… Streak reset. Let’s stand up and recover.';
 
   setStatus(
-    '🍤 Cooked',
+    `${STATUS_ICONS.cooked} Cooked`,
     cookedMessage,
     new vscode.ThemeColor('statusBarItem.errorBackground'),
     new vscode.ThemeColor('statusBarItem.errorForeground')
@@ -225,6 +247,8 @@ async function handleCookedState(showPopup: boolean): Promise<void> {
     'I’m up 😅',
     'Give me 5 min'
   );
+
+  if (currentState !== 'cooked') return;
 
   if (selection === 'I’m up 😅') {
     vscode.window.showInformationMessage('🫡 Back on your feet. New cycle started.');
@@ -317,7 +341,6 @@ async function showQuickMenu(): Promise<void> {
 
 async function showTimerMenu(): Promise<void> {
   const config = vscode.workspace.getConfiguration('shrimpCheck');
-  const configTarget = vscode.ConfigurationTarget.Global;
 
   const selection = await vscode.window.showQuickPick(
     [
@@ -361,16 +384,16 @@ async function showTimerMenu(): Promise<void> {
     const safeMin = Number.isFinite(rawMin) ? Math.max(1, rawMin) : 30;
     const safeMax = Number.isFinite(rawMax) ? Math.max(safeMin, rawMax) : safeMin;
 
-    await config.update('minMinutes', safeMin, configTarget);
-    await config.update('maxMinutes', safeMax, configTarget);
+    await updateShrimpConfig(config, 'minMinutes', safeMin);
+    await updateShrimpConfig(config, 'maxMinutes', safeMax);
 
     vscode.window.showInformationMessage(`🦐 Posture timer set to ${safeMin}-${safeMax} minutes.`);
     refreshFromConfig();
     return;
   }
 
-  await config.update('minMinutes', selection.min, configTarget);
-  await config.update('maxMinutes', selection.max, configTarget);
+  await updateShrimpConfig(config, 'minMinutes', selection.min);
+  await updateShrimpConfig(config, 'maxMinutes', selection.max);
 
   vscode.window.showInformationMessage(
     `🦐 Posture timer set to ${selection.min}-${selection.max} minutes.`
@@ -381,7 +404,6 @@ async function showTimerMenu(): Promise<void> {
 
 async function showCookedDelayMenu(): Promise<void> {
   const config = vscode.workspace.getConfiguration('shrimpCheck');
-  const configTarget = vscode.ConfigurationTarget.Global;
 
   const selection = await vscode.window.showQuickPick(
     [
@@ -420,13 +442,13 @@ async function showCookedDelayMenu(): Promise<void> {
     const parsed = Number(input.trim());
     const safeDelay = Number.isFinite(parsed) ? Math.max(1, parsed) : 10;
 
-    await config.update('cookedDelayMinutes', safeDelay, configTarget);
+    await updateShrimpConfig(config, 'cookedDelayMinutes', safeDelay);
     vscode.window.showInformationMessage(`🍤 Cooked delay set to ${safeDelay} minutes.`);
     refreshFromConfig();
     return;
   }
 
-  await config.update('cookedDelayMinutes', selection.value, configTarget);
+  await updateShrimpConfig(config, 'cookedDelayMinutes', selection.value);
   vscode.window.showInformationMessage(`🍤 Cooked delay set to ${selection.value} minutes.`);
   refreshFromConfig();
 }
@@ -506,36 +528,34 @@ async function showHydrationMenu(): Promise<void> {
 
   if (!selection) return;
 
-  const configTarget = vscode.ConfigurationTarget.Global;
-
   switch (selection.label) {
     case 'Enable Hydration Checks':
-      await config.update('hydrationEnabled', true, configTarget);
+      await updateShrimpConfig(config, 'hydrationEnabled', true);
       vscode.window.showInformationMessage('💧 Hydration checks enabled.');
       break;
 
     case 'Disable Hydration Checks':
-      await config.update('hydrationEnabled', false, configTarget);
+      await updateShrimpConfig(config, 'hydrationEnabled', false);
       vscode.window.showInformationMessage('💧 Hydration checks disabled.');
       break;
 
     case 'Set hydration to 15 minutes':
-      await config.update('hydrationMinutes', 15, configTarget);
+      await updateShrimpConfig(config, 'hydrationMinutes', 15);
       vscode.window.showInformationMessage('💧 Hydration timer set to 15 minutes.');
       break;
 
     case 'Set hydration to 30 minutes':
-      await config.update('hydrationMinutes', 30, configTarget);
+      await updateShrimpConfig(config, 'hydrationMinutes', 30);
       vscode.window.showInformationMessage('💧 Hydration timer set to 30 minutes.');
       break;
 
     case 'Set hydration to 45 minutes':
-      await config.update('hydrationMinutes', 45, configTarget);
+      await updateShrimpConfig(config, 'hydrationMinutes', 45);
       vscode.window.showInformationMessage('💧 Hydration timer set to 45 minutes.');
       break;
 
     case 'Set hydration to 60 minutes':
-      await config.update('hydrationMinutes', 60, configTarget);
+      await updateShrimpConfig(config, 'hydrationMinutes', 60);
       vscode.window.showInformationMessage('💧 Hydration timer set to 60 minutes.');
       break;
 
@@ -547,7 +567,7 @@ async function showHydrationMenu(): Promise<void> {
 
       if (input !== undefined) {
         const trimmed = input.trim();
-        await config.update('drink', trimmed, configTarget);
+        await updateShrimpConfig(config, 'drink', trimmed);
         vscode.window.showInformationMessage(
           `💧 Drink preference set to ${trimmed || 'caffeine'}.`
         );
@@ -575,6 +595,9 @@ function setStatus(
   statusBarItem.tooltip = createShrimpTooltip(tooltipText);
   statusBarItem.backgroundColor = backgroundColor;
   statusBarItem.color = foregroundColor;
+  statusBarItem.accessibilityInformation = {
+    label: `Shrimp Check: ${getStateLabel()}. ${tooltipText}`
+  };
 }
 
 function createShrimpTooltip(message: string): vscode.MarkdownString {
@@ -589,27 +612,11 @@ function createShrimpTooltip(message: string): vscode.MarkdownString {
 
   const streak = getStreak();
 
-  const stateLabel =
-    currentState === 'ok'
-      ? 'Posture OK'
-      : currentState === 'warning'
-        ? 'Shrimp forming'
-        : currentState === 'recovery'
-          ? 'Recovering'
-          : 'Cooked';
-
-  const stateIcon =
-    currentState === 'ok'
-      ? '🙂'
-      : currentState === 'warning'
-        ? '🟡'
-        : currentState === 'recovery'
-          ? '🦐'
-          : '🍤';
+  const stateLabel = getStateLabel();
+  const stateIcon = getStateIcon();
 
   const tooltip = new vscode.MarkdownString();
-  tooltip.isTrusted = true;
-  tooltip.supportHtml = true;
+  tooltip.isTrusted = { enabledCommands: TRUSTED_TOOLTIP_COMMANDS };
 
   tooltip.appendMarkdown(`### 🦐 Shrimp Check\n\n`);
   tooltip.appendMarkdown(`_Tiny posture guard for developers._\n\n`);
@@ -665,6 +672,11 @@ function clearPostureTimers(): void {
     clearTimeout(recoveryTimeout);
     recoveryTimeout = undefined;
   }
+
+  if (snoozeTimeout) {
+    clearTimeout(snoozeTimeout);
+    snoozeTimeout = undefined;
+  }
 }
 
 function clearAllTimers(): void {
@@ -690,6 +702,61 @@ function getPreferredDrink(): string {
   return rawDrink.length > 0 ? rawDrink : 'caffeine';
 }
 
+function getStateLabel(): string {
+  switch (currentState) {
+    case 'ok':
+      return 'Posture OK';
+    case 'warning':
+      return 'Shrimp forming';
+    case 'recovery':
+      return 'Recovering';
+    case 'cooked':
+      return 'Cooked';
+    case 'snoozed':
+      return 'Snoozed';
+  }
+}
+
+function getStateIcon(): string {
+  switch (currentState) {
+    case 'ok':
+      return STATUS_ICONS.ok;
+    case 'warning':
+      return STATUS_ICONS.warning;
+    case 'recovery':
+      return STATUS_ICONS.ok;
+    case 'cooked':
+      return STATUS_ICONS.cooked;
+    case 'snoozed':
+      return '😌';
+  }
+}
+
+function getEffectiveConfigurationTarget(
+  config: vscode.WorkspaceConfiguration,
+  key: string
+): vscode.ConfigurationTarget {
+  const inspected = config.inspect<unknown>(key);
+
+  if (inspected?.workspaceFolderValue !== undefined) {
+    return vscode.ConfigurationTarget.WorkspaceFolder;
+  }
+
+  if (inspected?.workspaceValue !== undefined) {
+    return vscode.ConfigurationTarget.Workspace;
+  }
+
+  return vscode.ConfigurationTarget.Global;
+}
+
+async function updateShrimpConfig<T>(
+  config: vscode.WorkspaceConfiguration,
+  key: string,
+  value: T
+): Promise<void> {
+  await config.update(key, value, getEffectiveConfigurationTarget(config, key));
+}
+
 async function incrementStreak(): Promise<void> {
   const streak = getStreak() + 1;
   await extensionContext.globalState.update('shrimpCheck.streak', streak);
@@ -702,3 +769,13 @@ async function resetStreak(): Promise<void> {
 export function deactivate(): void {
   clearAllTimers();
 }
+
+export const __testing = {
+  SNOOZE_MINUTES,
+  SNOOZE_MS,
+  clearAllTimers,
+  getCurrentState: () => currentState,
+  getEffectiveConfigurationTarget,
+  refreshFromConfig,
+  startCycle
+};

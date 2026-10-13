@@ -1,5 +1,8 @@
 node_modules/
+out/
 dist/
+.icon-build/
+tmp-icon-*/
 .vscode-test/
 *.vsix
 *.log

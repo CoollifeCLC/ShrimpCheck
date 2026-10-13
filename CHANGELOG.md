@@ -2,6 +2,22 @@
 
 All notable changes to the Shrimp Check extension will be documented in this file.
 
+## 0.0.10
+
+### 🛠 Correctness & Hygiene
+- Fixed cooked timing so `cookedDelayMinutes` starts when warning state begins.
+- Made snooze behavior internally consistent with a 5-minute duration, neutral command label, and real snoozed state.
+- Updated quick menus to write to the effective settings scope instead of always writing global settings.
+- Aligned contributed setting minimums with the supported 1-minute floor used by the extension.
+- Added status bar accessibility metadata and narrowed trusted tooltip commands.
+- Cleaned VSIX packaging to omit source, tests, docs, sourcemaps, and dev-only metadata.
+- Added regression tests for timer transitions, snooze, scoped setting writes, and popup-disabled flow.
+
+## 0.0.9
+
+### 🧹 Release Maintenance
+- Reconciled package metadata after the 0.0.9 package version shipped without a changelog entry.
+
 ## 0.0.8
 
 ### ✨ Major UX Update

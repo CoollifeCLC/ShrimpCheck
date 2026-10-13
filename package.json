@@ -2,7 +2,7 @@
   "name": "shrimp-check",
   "displayName": "Shrimp Check",
   "description": "A playful VS Code extension that reminds you to fix your posture before you become a full crustacean.",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "publisher": "contractos",
   "license": "MIT",
   "icon": "images/shrimp-check-logo.png",
@@ -30,6 +30,29 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "icons": {
+      "shrimp-ok": {
+        "description": "Shrimp Check posture OK icon",
+        "default": {
+          "fontPath": "./media/shrimp-check-icons.woff",
+          "fontCharacter": "\\E001"
+        }
+      },
+      "shrimp-warning": {
+        "description": "Shrimp Check posture warning icon",
+        "default": {
+          "fontPath": "./media/shrimp-check-icons.woff",
+          "fontCharacter": "\\E001"
+        }
+      },
+      "shrimp-cooked": {
+        "description": "Shrimp Check cooked posture icon",
+        "default": {
+          "fontPath": "./media/shrimp-check-icons.woff",
+          "fontCharacter": "\\E001"
+        }
+      }
+    },
     "commands": [
       {
         "command": "shrimpCheck.openQuickMenu",
@@ -53,7 +76,7 @@
       },
       {
         "command": "shrimpCheck.snooze",
-        "title": "Shrimp Check: Snooze 10 Minutes"
+        "title": "Shrimp Check: Snooze"
       },
       {
         "command": "shrimpCheck.toggle",
@@ -71,13 +94,13 @@
         "shrimpCheck.minMinutes": {
           "type": "number",
           "default": 30,
-          "minimum": 30,
+          "minimum": 1,
           "description": "Minimum number of minutes before a posture reminder."
         },
         "shrimpCheck.maxMinutes": {
           "type": "number",
           "default": 45,
-          "minimum": 45,
+          "minimum": 1,
           "description": "Maximum number of minutes before a posture reminder."
         },
         "shrimpCheck.warningFraction": {
@@ -95,7 +118,7 @@
         "shrimpCheck.cookedDelayMinutes": {
           "type": "number",
           "default": 10,
-          "minimum": 10,
+          "minimum": 1,
           "description": "Minutes after the warning state before you become cooked."
         },
         "shrimpCheck.hydrationEnabled": {
@@ -106,7 +129,7 @@
         "shrimpCheck.hydrationMinutes": {
           "type": "number",
           "default": 45,
-          "minimum": 45,
+          "minimum": 1,
           "description": "Minutes between hydration reminders."
         },
         "shrimpCheck.drink": {
@@ -119,7 +142,9 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
+    "build:icons": "node scripts/build-icons.cjs",
     "compile": "tsc -p ./",
+    "test": "node --test test/extension.test.js",
     "watch": "tsc -watch -p ./",
     "package": "vsce package"
   },
@@ -127,6 +152,9 @@
     "@types/node": "^20.19.39",
     "@types/vscode": "1.85.0",
     "@vscode/vsce": "^3.7.1",
+    "svg2ttf": "^6.1.0",
+    "svgicons2svgfont": "^15.0.1",
+    "ttf2woff": "^3.0.0",
     "typescript": "^5.9.3"
   }
 }
