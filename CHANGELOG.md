@@ -2,6 +2,14 @@
 
 All notable changes to the Shrimp Check extension will be documented in this file.
 
+## 0.1.0
+
+- TODO: describe this release
+
+## 0.0.12
+
+- TODO: describe this release
+
 ## 0.0.11
 
 ### 🧠 Challenge Mode
