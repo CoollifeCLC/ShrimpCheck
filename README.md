@@ -33,6 +33,7 @@ Most reminder tools interrupt you.
 - 🔥 Streak tracking (don’t break it)
 - 😌 Snooze support
 - 💧 Optional hydration reminders (custom drink)
+- 🧠 Optional **Challenge Mode**: timed coding challenges with star ratings
 
 ---
 
@@ -63,6 +64,30 @@ Instant access to:
 - Adjust cooked delay
 - Hydration settings
 - Enable / Disable extension
+
+---
+
+## 🧠 Challenge Mode
+
+Turn Shrimp Check into a lightweight interview-practice coach. It is off by default: enable it from **Quick Menu → Challenge Mode**, or apply the **Interview Sprint** preset.
+
+- On your chosen interval, a notification offers a challenge. The clock starts only when you click **Start**.
+- Write your solution in a regular editor tab. Use **Run Tests** to check the visible tests, then **Submit** to run the hidden tests too.
+- **Correctness comes first.** Only a fully passing solution is rated:
+
+| Solve time (default) | Rating |
+|---|---|
+| ≤ 10 min | ★★★★★ |
+| ≤ 15 min | ★★★★☆ |
+| ≤ 20 min | ★★★☆☆ |
+| ≤ 30 min | ★★☆☆☆ |
+| longer | ★☆☆☆☆ |
+
+- Stuck? **Reveal Pattern** caps the rating at ★★★★, **Show Hint** at ★★★, and **Show Approach** at ★★.
+- The timer never fails you. Take as long as you need.
+- **Challenge Stats** shows total solves, average time, five-star count, day streak, and your score per category. Weaker categories come up more often.
+
+Categories: Strings, Arrays, Hash Maps / Sets, Two Pointers, Sliding Window, Stacks / Queues, Binary Search, Recursion, Trees. Optional practical challenges cover APIs, async/promises, and regex.
 
 ---
 

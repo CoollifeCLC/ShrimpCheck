@@ -1,4 +1,18 @@
 import * as vscode from 'vscode';
+import { ChallengeController } from './challenges/controller';
+import {
+  CHALLENGE_KEYS,
+  INTERVIEW_SPRINT_PRESET,
+  readChallengeSettings
+} from './challenges/settings';
+import {
+  CATEGORY_LABELS,
+  CORE_CATEGORIES,
+  ChallengeCategory,
+  DIFFICULTIES,
+  DIFFICULTY_LABELS,
+  PRACTICAL_CATEGORIES
+} from './challenges/types';
 
 type ShrimpState = 'ok' | 'warning' | 'recovery' | 'cooked' | 'snoozed';
 
@@ -9,13 +23,17 @@ const STATUS_ICONS = {
 };
 const SNOOZE_MINUTES = 5;
 const SNOOZE_MS = SNOOZE_MINUTES * 60_000;
+const CHALLENGE_LATER_MINUTES = 10;
+const CHALLENGE_LATER_MS = CHALLENGE_LATER_MINUTES * 60_000;
 const TRUSTED_TOOLTIP_COMMANDS = [
   'shrimpCheck.openQuickMenu',
   'shrimpCheck.resetPosture',
   'shrimpCheck.snooze',
   'shrimpCheck.timerMenu',
   'shrimpCheck.hydrationMenu',
-  'shrimpCheck.openSettings'
+  'shrimpCheck.openSettings',
+  'shrimpCheck.challengeMenu',
+  'shrimpCheck.startChallenge'
 ];
 
 let statusBarItem: vscode.StatusBarItem;
@@ -25,10 +43,13 @@ let cookedTimeout: ReturnType<typeof setTimeout> | undefined;
 let recoveryTimeout: ReturnType<typeof setTimeout> | undefined;
 let snoozeTimeout: ReturnType<typeof setTimeout> | undefined;
 let hydrationTimeout: ReturnType<typeof setTimeout> | undefined;
+let challengeTimeout: ReturnType<typeof setTimeout> | undefined;
 
 let isEnabled = true;
 let currentState: ShrimpState = 'ok';
 let extensionContext: vscode.ExtensionContext;
+let challengeController: ChallengeController | undefined;
+let lastStatusMessage = '';
 
 export function activate(context: vscode.ExtensionContext): void {
   extensionContext = context;
@@ -36,6 +57,9 @@ export function activate(context: vscode.ExtensionContext): void {
   statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
   statusBarItem.command = 'shrimpCheck.openQuickMenu';
   context.subscriptions.push(statusBarItem);
+
+  challengeController = new ChallengeController(context, () => refreshStatusTooltip());
+  context.subscriptions.push(challengeController);
 
   const quickMenuCommand = vscode.commands.registerCommand('shrimpCheck.openQuickMenu', async () => {
     await showQuickMenu();
@@ -108,6 +132,26 @@ export function activate(context: vscode.ExtensionContext): void {
     await vscode.commands.executeCommand('workbench.action.openSettings', 'shrimpCheck');
   });
 
+  const challengeMenuCommand = vscode.commands.registerCommand('shrimpCheck.challengeMenu', async () => {
+    await showChallengeMenu();
+  });
+
+  const startChallengeCommand = vscode.commands.registerCommand('shrimpCheck.startChallenge', async () => {
+    await startChallengeNow();
+  });
+
+  const resumeChallengeCommand = vscode.commands.registerCommand('shrimpCheck.resumeChallenge', async () => {
+    if (!challengeController?.hasActiveSession()) {
+      vscode.window.showInformationMessage('🧠 No challenge in progress. Start one from the Challenge Mode menu.');
+      return;
+    }
+    await challengeController.resume();
+  });
+
+  const challengeStatsCommand = vscode.commands.registerCommand('shrimpCheck.challengeStats', () => {
+    challengeController?.showStats();
+  });
+
   const configListener = vscode.workspace.onDidChangeConfiguration((event) => {
     if (event.affectsConfiguration('shrimpCheck')) {
       refreshFromConfig();
@@ -122,6 +166,10 @@ export function activate(context: vscode.ExtensionContext): void {
     hydrationMenuCommand,
     timerMenuCommand,
     openSettingsCommand,
+    challengeMenuCommand,
+    startChallengeCommand,
+    resumeChallengeCommand,
+    challengeStatsCommand,
     configListener
   );
 
@@ -144,6 +192,7 @@ function refreshFromConfig(): void {
   statusBarItem.show();
   startCycle();
   startHydrationCycle();
+  startChallengeCycle();
 }
 
 function startCycle(): void {
@@ -268,6 +317,7 @@ async function showQuickMenu(): Promise<void> {
   const maxMinutes = config.get<number>('maxMinutes', 45);
   const cookedDelayMinutes = config.get<number>('cookedDelayMinutes', 10);
   const hydrationEnabled = config.get<boolean>('hydrationEnabled', false);
+  const challengeSettings = readChallengeSettings(config);
 
   const selection = await vscode.window.showQuickPick(
     [
@@ -290,6 +340,14 @@ async function showQuickMenu(): Promise<void> {
       {
         label: 'Hydration settings',
         description: `Currently ${hydrationEnabled ? 'On' : 'Off'}`
+      },
+      {
+        label: 'Challenge Mode',
+        description: challengeController?.activeChallenge
+          ? `In progress: ${challengeController.activeChallenge.title}`
+          : challengeSettings.enabled
+            ? `Every ${challengeSettings.intervalMinutes} minutes`
+            : 'Currently Off'
       },
       {
         label: enabled ? 'Disable Shrimp Check' : 'Enable Shrimp Check',
@@ -326,6 +384,10 @@ async function showQuickMenu(): Promise<void> {
 
     case 'Hydration settings':
       await showHydrationMenu();
+      break;
+
+    case 'Challenge Mode':
+      await showChallengeMenu();
       break;
 
     case 'Disable Shrimp Check':
@@ -591,6 +653,7 @@ function setStatus(
   backgroundColor?: vscode.ThemeColor,
   foregroundColor?: vscode.ThemeColor
 ): void {
+  lastStatusMessage = tooltipText;
   statusBarItem.text = text;
   statusBarItem.tooltip = createShrimpTooltip(tooltipText);
   statusBarItem.backgroundColor = backgroundColor;
@@ -639,16 +702,33 @@ function createShrimpTooltip(message: string): vscode.MarkdownString {
     }\n\n`
   );
 
+  const challengeSettings = readChallengeSettings(config);
+  const activeChallenge = challengeController?.activeChallenge;
+  tooltip.appendMarkdown(`**🧠 Challenge Mode**\n\n`);
+  tooltip.appendMarkdown(
+    `- ${challengeSettings.enabled ? '☑' : '☐'} **Challenges:** ${
+      challengeSettings.enabled ? `Every ${challengeSettings.intervalMinutes} min` : 'Off'
+    }\n`
+  );
+  if (activeChallenge) {
+    tooltip.appendMarkdown(`- ⏱ **In progress:** ${escapeMarkdown(activeChallenge.title)}\n`);
+  }
+  tooltip.appendMarkdown(`- ⭐ **Solved:** ${challengeController?.solvedCount() ?? 0}\n\n`);
+
   tooltip.appendMarkdown(`---\n\n`);
 
   tooltip.appendMarkdown(`**⚡ Quick Actions**\n\n`);
   tooltip.appendMarkdown(`[Open Quick Menu](command:shrimpCheck.openQuickMenu)  \n`);
   tooltip.appendMarkdown(`[Reset Timer](command:shrimpCheck.resetPosture)  \n`);
-  tooltip.appendMarkdown(`[Snooze 5 Min](command:shrimpCheck.snooze)\n\n`);
+  tooltip.appendMarkdown(`[Snooze 5 Min](command:shrimpCheck.snooze)  \n`);
+  tooltip.appendMarkdown(
+    `[${activeChallenge ? 'Resume Challenge' : 'Start Challenge'}](command:shrimpCheck.startChallenge)\n\n`
+  );
 
   tooltip.appendMarkdown(`**🛠 Settings**\n\n`);
   tooltip.appendMarkdown(`[Adjust Timers](command:shrimpCheck.timerMenu)  \n`);
   tooltip.appendMarkdown(`[Hydration Settings](command:shrimpCheck.hydrationMenu)  \n`);
+  tooltip.appendMarkdown(`[Challenge Mode](command:shrimpCheck.challengeMenu)  \n`);
   tooltip.appendMarkdown(`[Open Full Settings](command:shrimpCheck.openSettings)\n`);
 
   tooltip.appendMarkdown(`\n---\n`);
@@ -685,6 +765,15 @@ function clearAllTimers(): void {
   if (hydrationTimeout) {
     clearTimeout(hydrationTimeout);
     hydrationTimeout = undefined;
+  }
+
+  clearChallengeTimer();
+}
+
+function clearChallengeTimer(): void {
+  if (challengeTimeout) {
+    clearTimeout(challengeTimeout);
+    challengeTimeout = undefined;
   }
 }
 
@@ -770,11 +859,337 @@ export function deactivate(): void {
   clearAllTimers();
 }
 
+function escapeMarkdown(text: string): string {
+  return text.replace(/[\\`*_{}\[\]()#+\-.!|<>]/g, '\\$&');
+}
+
+function refreshStatusTooltip(): void {
+  if (!statusBarItem) return;
+  statusBarItem.tooltip = createShrimpTooltip(lastStatusMessage);
+}
+
+// ── Challenge Mode ──────────────────────────────────────────────────────────
+
+/**
+ * Independent fixed-interval loop, same shape as hydration. It never touches
+ * posture state, and it only offers a challenge; nothing opens until the user
+ * says Start, so active work is never interrupted destructively.
+ */
+function startChallengeCycle(delayMs?: number): void {
+  clearChallengeTimer();
+
+  const settings = readChallengeSettings(vscode.workspace.getConfiguration('shrimpCheck'));
+  if (!isEnabled || !settings.enabled) return;
+
+  challengeTimeout = setTimeout(() => {
+    challengeTimeout = undefined;
+    void onChallengeDue();
+  }, delayMs ?? settings.intervalMinutes * 60_000);
+}
+
+async function onChallengeDue(): Promise<void> {
+  // Schedule the next regular slot first so an ignored notification never stalls the loop.
+  startChallengeCycle();
+
+  if (!challengeController) return;
+
+  if (challengeController.hasActiveSession()) {
+    // One challenge at a time; the open one keeps its clock.
+    return;
+  }
+
+  const challenge = challengeController.pickNext();
+  if (!challenge) {
+    const selection = await vscode.window.showWarningMessage(
+      '🧠 No challenges match your Challenge Mode categories and difficulties.',
+      'Challenge Settings'
+    );
+    if (selection === 'Challenge Settings') await showChallengeMenu();
+    return;
+  }
+
+  const selection = await vscode.window.showInformationMessage(
+    `🧠 Shrimp Challenge ready: ${challenge.title} (${DIFFICULTY_LABELS[challenge.difficulty]} · ${
+      CATEGORY_LABELS[challenge.category]
+    }). The clock starts when you do.`,
+    'Start',
+    `In ${CHALLENGE_LATER_MINUTES} min`,
+    'Skip'
+  );
+
+  if (selection === 'Start') {
+    await challengeController.start(challenge);
+  } else if (selection === `In ${CHALLENGE_LATER_MINUTES} min`) {
+    startChallengeCycle(CHALLENGE_LATER_MS);
+  }
+}
+
+async function startChallengeNow(): Promise<void> {
+  if (!challengeController) return;
+
+  const active = challengeController.activeChallenge;
+  if (active) {
+    const choice = await vscode.window.showInformationMessage(
+      `🧠 "${active.title}" is still in progress.`,
+      'Resume',
+      'Skip it and start a new one'
+    );
+    if (choice === 'Resume') {
+      await challengeController.resume();
+      return;
+    }
+    if (choice !== 'Skip it and start a new one') return;
+    await challengeController.abandon();
+  }
+
+  const challenge = challengeController.pickNext();
+  if (!challenge) {
+    vscode.window.showWarningMessage(
+      '🧠 No challenges match your Challenge Mode categories and difficulties.'
+    );
+    return;
+  }
+
+  await challengeController.start(challenge);
+}
+
+async function showChallengeMenu(): Promise<void> {
+  const config = vscode.workspace.getConfiguration('shrimpCheck');
+  const settings = readChallengeSettings(config);
+  const active = challengeController?.activeChallenge;
+  const th = settings.thresholds;
+
+  const items: vscode.QuickPickItem[] = [
+    { label: 'Start a challenge now', description: 'Pick one based on your filters and weak spots' },
+    ...(active
+      ? [
+          { label: 'Resume current challenge', description: active.title },
+          { label: 'Skip current challenge', description: 'Logged as unsolved' }
+        ]
+      : []),
+    {
+      label: settings.enabled ? 'Disable Challenge Mode' : 'Enable Challenge Mode',
+      description: `Currently ${settings.enabled ? 'On' : 'Off'}`
+    },
+    { label: 'Apply Interview Sprint preset', description: 'Core patterns · Easy + Medium · every 30 min' },
+    { label: 'Set challenge frequency', description: `Current: every ${settings.intervalMinutes} minutes` },
+    { label: 'Choose categories', description: `${settings.categories.length} selected` },
+    {
+      label: 'Choose difficulties',
+      description: settings.difficulties.map((d) => DIFFICULTY_LABELS[d]).join(' + ') || 'None'
+    },
+    {
+      label: 'Set star timing thresholds',
+      description: `★5 ≤${th.five} · ★4 ≤${th.four} · ★3 ≤${th.three} · ★2 ≤${th.two} min`
+    },
+    {
+      label: settings.includePractical ? 'Exclude practical challenges' : 'Include practical challenges',
+      description: `API, async, regex… currently ${settings.includePractical ? 'On' : 'Off'}`
+    },
+    { label: 'View challenge stats', description: 'Solves, speed, streak, category scores' },
+    { label: 'Open Challenge Mode settings', description: 'All options in VS Code settings' }
+  ];
+
+  const selection = await vscode.window.showQuickPick(items, { placeHolder: 'Shrimp Check Challenge Mode 🧠' });
+  if (!selection) return;
+
+  switch (selection.label) {
+    case 'Start a challenge now':
+      await startChallengeNow();
+      return;
+
+    case 'Resume current challenge':
+      await challengeController?.resume();
+      return;
+
+    case 'Skip current challenge':
+      await challengeController?.abandon();
+      vscode.window.showInformationMessage('🧠 Challenge skipped. Logged as unsolved.');
+      return;
+
+    case 'Enable Challenge Mode':
+    case 'Disable Challenge Mode': {
+      const next = !settings.enabled;
+      await updateShrimpConfig(config, CHALLENGE_KEYS.enabled, next);
+      vscode.window.showInformationMessage(
+        next
+          ? `🧠 Challenge Mode on. First challenge in ${settings.intervalMinutes} minutes.`
+          : '🧠 Challenge Mode off.'
+      );
+      break;
+    }
+
+    case 'Apply Interview Sprint preset':
+      for (const [key, value] of INTERVIEW_SPRINT_PRESET) {
+        await updateShrimpConfig(config, key, value);
+      }
+      vscode.window.showInformationMessage(
+        '🧠 Interview Sprint applied: core patterns, Easy + Medium, every 30 minutes. Every option stays editable.'
+      );
+      break;
+
+    case 'Set challenge frequency':
+      await showChallengeFrequencyMenu(config);
+      break;
+
+    case 'Choose categories':
+      await showChallengeCategoryPicker(config, settings.categories);
+      break;
+
+    case 'Choose difficulties':
+      await showChallengeDifficultyPicker(config, settings.difficulties);
+      break;
+
+    case 'Set star timing thresholds':
+      await showStarThresholdInput(config);
+      break;
+
+    case 'Include practical challenges':
+    case 'Exclude practical challenges':
+      await updateShrimpConfig(config, CHALLENGE_KEYS.includePractical, !settings.includePractical);
+      if (!settings.includePractical) {
+        const merged = Array.from(new Set<ChallengeCategory>([...settings.categories, ...PRACTICAL_CATEGORIES]));
+        await updateShrimpConfig(config, CHALLENGE_KEYS.categories, merged);
+      }
+      break;
+
+    case 'View challenge stats':
+      challengeController?.showStats();
+      return;
+
+    case 'Open Challenge Mode settings':
+      await vscode.commands.executeCommand('workbench.action.openSettings', 'shrimpCheck.challenge');
+      return;
+  }
+
+  refreshFromConfig();
+}
+
+async function showChallengeFrequencyMenu(config: vscode.WorkspaceConfiguration): Promise<void> {
+  const selection = await vscode.window.showQuickPick(
+    [
+      { label: 'Every 15 minutes', value: 15 },
+      { label: 'Every 30 minutes', value: 30 },
+      { label: 'Every 60 minutes', value: 60 },
+      { label: 'Every 90 minutes', value: 90 },
+      { label: 'Custom interval', value: undefined }
+    ],
+    { placeHolder: 'How often should a challenge be offered?' }
+  );
+  if (!selection) return;
+
+  let minutes = selection.value;
+  if (minutes === undefined) {
+    const input = await vscode.window.showInputBox({
+      prompt: 'Minutes between challenges',
+      placeHolder: 'Example: 45'
+    });
+    if (!input) return;
+    const parsed = Number(input.trim());
+    minutes = Number.isFinite(parsed) ? Math.max(1, Math.round(parsed)) : 60;
+  }
+
+  await updateShrimpConfig(config, CHALLENGE_KEYS.intervalMinutes, minutes);
+  vscode.window.showInformationMessage(`🧠 Challenges every ${minutes} minutes.`);
+}
+
+async function showChallengeCategoryPicker(
+  config: vscode.WorkspaceConfiguration,
+  current: ChallengeCategory[]
+): Promise<void> {
+  const selected = new Set(current);
+  const items = [
+    ...CORE_CATEGORIES.map((category) => ({
+      label: CATEGORY_LABELS[category],
+      category: category as ChallengeCategory,
+      picked: selected.has(category)
+    })),
+    ...PRACTICAL_CATEGORIES.map((category) => ({
+      label: CATEGORY_LABELS[category],
+      description: 'Practical',
+      category: category as ChallengeCategory,
+      picked: selected.has(category)
+    }))
+  ];
+
+  const picks = await vscode.window.showQuickPick(items, {
+    canPickMany: true,
+    placeHolder: 'Challenge categories (practical ones also need "Include practical challenges")'
+  });
+  if (!picks) return;
+
+  if (picks.length === 0) {
+    vscode.window.showWarningMessage('🧠 Pick at least one category. Nothing changed.');
+    return;
+  }
+
+  await updateShrimpConfig(
+    config,
+    CHALLENGE_KEYS.categories,
+    picks.map((pick) => pick.category)
+  );
+}
+
+async function showChallengeDifficultyPicker(
+  config: vscode.WorkspaceConfiguration,
+  current: string[]
+): Promise<void> {
+  const picks = await vscode.window.showQuickPick(
+    DIFFICULTIES.map((difficulty) => ({
+      label: DIFFICULTY_LABELS[difficulty],
+      difficulty,
+      picked: current.includes(difficulty)
+    })),
+    { canPickMany: true, placeHolder: 'Challenge difficulties' }
+  );
+  if (!picks) return;
+
+  if (picks.length === 0) {
+    vscode.window.showWarningMessage('🧠 Pick at least one difficulty. Nothing changed.');
+    return;
+  }
+
+  await updateShrimpConfig(
+    config,
+    CHALLENGE_KEYS.difficulties,
+    picks.map((pick) => pick.difficulty)
+  );
+}
+
+async function showStarThresholdInput(config: vscode.WorkspaceConfiguration): Promise<void> {
+  const th = readChallengeSettings(config).thresholds;
+  const input = await vscode.window.showInputBox({
+    prompt: 'Minutes for ★★★★★, ★★★★, ★★★, ★★ (comma separated, increasing). Slower correct solves get ★.',
+    value: `${th.five}, ${th.four}, ${th.three}, ${th.two}`,
+    validateInput: (value) => {
+      const parts = value.split(',').map((part) => Number(part.trim()));
+      if (parts.length !== 4 || parts.some((part) => !Number.isFinite(part) || part <= 0)) {
+        return 'Enter four positive numbers, e.g. 10, 15, 20, 30';
+      }
+      for (let i = 1; i < parts.length; i += 1) {
+        if (parts[i] < parts[i - 1]) return 'Each threshold must be at least the one before it';
+      }
+      return undefined;
+    }
+  });
+  if (!input) return;
+
+  const [five, four, three, two] = input.split(',').map((part) => Number(part.trim()));
+  await updateShrimpConfig(config, CHALLENGE_KEYS.fiveStarMinutes, five);
+  await updateShrimpConfig(config, CHALLENGE_KEYS.fourStarMinutes, four);
+  await updateShrimpConfig(config, CHALLENGE_KEYS.threeStarMinutes, three);
+  await updateShrimpConfig(config, CHALLENGE_KEYS.twoStarMinutes, two);
+  vscode.window.showInformationMessage(`🧠 Star thresholds: ${five} / ${four} / ${three} / ${two} minutes.`);
+}
+
 export const __testing = {
   SNOOZE_MINUTES,
   SNOOZE_MS,
   clearAllTimers,
   getCurrentState: () => currentState,
+  getChallengeController: () => challengeController,
+  hasChallengeTimer: () => challengeTimeout !== undefined,
+  startChallengeCycle,
   getEffectiveConfigurationTarget,
   refreshFromConfig,
   startCycle

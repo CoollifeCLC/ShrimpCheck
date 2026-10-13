@@ -1,7 +1,7 @@
 {
   "name": "shrimp-check",
   "displayName": "Shrimp Check",
-  "description": "A playful VS Code extension that reminds you to fix your posture before you become a full crustacean.",
+  "description": "A playful VS Code extension that reminds you to fix your posture before you become a full crustacean — now with timed coding challenges.",
   "version": "0.0.10",
   "publisher": "contractos",
   "license": "MIT",
@@ -23,7 +23,10 @@
     "reminder",
     "productivity",
     "funny",
-    "shrimp"
+    "shrimp",
+    "coding challenges",
+    "interview prep",
+    "practice"
   ],
   "activationEvents": [
     "onStartupFinished"
@@ -81,77 +84,222 @@
       {
         "command": "shrimpCheck.toggle",
         "title": "Shrimp Check: Enable/Disable"
+      },
+      {
+        "command": "shrimpCheck.challengeMenu",
+        "title": "Shrimp Check: Challenge Mode"
+      },
+      {
+        "command": "shrimpCheck.startChallenge",
+        "title": "Shrimp Check: Start Challenge"
+      },
+      {
+        "command": "shrimpCheck.resumeChallenge",
+        "title": "Shrimp Check: Resume Challenge"
+      },
+      {
+        "command": "shrimpCheck.challengeStats",
+        "title": "Shrimp Check: Challenge Stats"
       }
     ],
-    "configuration": {
-      "title": "Shrimp Check",
-      "properties": {
-        "shrimpCheck.enabled": {
-          "type": "boolean",
-          "default": true,
-          "description": "Enable or disable Shrimp Check reminders."
-        },
-        "shrimpCheck.minMinutes": {
-          "type": "number",
-          "default": 30,
-          "minimum": 1,
-          "description": "Minimum number of minutes before a posture reminder."
-        },
-        "shrimpCheck.maxMinutes": {
-          "type": "number",
-          "default": 45,
-          "minimum": 1,
-          "description": "Maximum number of minutes before a posture reminder."
-        },
-        "shrimpCheck.warningFraction": {
-          "type": "number",
-          "default": 0.66,
-          "minimum": 0.1,
-          "maximum": 0.95,
-          "description": "Fraction of the posture cycle after which the warning state begins."
-        },
-        "shrimpCheck.showPopup": {
-          "type": "boolean",
-          "default": true,
-          "description": "Show popup reminders for posture events."
-        },
-        "shrimpCheck.cookedDelayMinutes": {
-          "type": "number",
-          "default": 10,
-          "minimum": 1,
-          "description": "Minutes after the warning state before you become cooked."
-        },
-        "shrimpCheck.hydrationEnabled": {
-          "type": "boolean",
-          "default": false,
-          "description": "Enable hydration reminders."
-        },
-        "shrimpCheck.hydrationMinutes": {
-          "type": "number",
-          "default": 45,
-          "minimum": 1,
-          "description": "Minutes between hydration reminders."
-        },
-        "shrimpCheck.drink": {
-          "type": "string",
-          "default": "",
-          "description": "Your preferred coding beverage for hydration messages. Falls back to 'caffeine' if left blank."
+    "configuration": [
+      {
+        "title": "Shrimp Check",
+        "properties": {
+          "shrimpCheck.enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable or disable Shrimp Check reminders."
+          },
+          "shrimpCheck.minMinutes": {
+            "type": "number",
+            "default": 30,
+            "minimum": 1,
+            "description": "Minimum number of minutes before a posture reminder."
+          },
+          "shrimpCheck.maxMinutes": {
+            "type": "number",
+            "default": 45,
+            "minimum": 1,
+            "description": "Maximum number of minutes before a posture reminder."
+          },
+          "shrimpCheck.warningFraction": {
+            "type": "number",
+            "default": 0.66,
+            "minimum": 0.1,
+            "maximum": 0.95,
+            "description": "Fraction of the posture cycle after which the warning state begins."
+          },
+          "shrimpCheck.showPopup": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show popup reminders for posture events."
+          },
+          "shrimpCheck.cookedDelayMinutes": {
+            "type": "number",
+            "default": 10,
+            "minimum": 1,
+            "description": "Minutes after the warning state before you become cooked."
+          },
+          "shrimpCheck.hydrationEnabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable hydration reminders."
+          },
+          "shrimpCheck.hydrationMinutes": {
+            "type": "number",
+            "default": 45,
+            "minimum": 1,
+            "description": "Minutes between hydration reminders."
+          },
+          "shrimpCheck.drink": {
+            "type": "string",
+            "default": "",
+            "description": "Your preferred coding beverage for hydration messages. Falls back to 'caffeine' if left blank."
+          }
+        }
+      },
+      {
+        "title": "Shrimp Check: Challenge Mode",
+        "properties": {
+          "shrimpCheck.challenge.enabled": {
+            "type": "boolean",
+            "default": false,
+            "order": 0,
+            "description": "Offer a timed coding challenge on a fixed interval. Independent of posture and hydration reminders."
+          },
+          "shrimpCheck.challenge.intervalMinutes": {
+            "type": "number",
+            "default": 60,
+            "minimum": 1,
+            "order": 1,
+            "description": "Minutes between challenge offers. The challenge clock only starts when you choose Start."
+          },
+          "shrimpCheck.challenge.categories": {
+            "type": "array",
+            "order": 2,
+            "items": {
+              "type": "string",
+              "enum": [
+                "strings",
+                "arrays",
+                "hashing",
+                "twoPointers",
+                "slidingWindow",
+                "stacksQueues",
+                "binarySearch",
+                "recursion",
+                "trees",
+                "api",
+                "jsFundamentals",
+                "async",
+                "regex",
+                "debugging"
+              ],
+              "enumDescriptions": [
+                "Strings",
+                "Arrays",
+                "Hash Maps / Sets",
+                "Two Pointers",
+                "Sliding Window",
+                "Stacks / Queues",
+                "Binary Search",
+                "Recursion",
+                "Trees",
+                "API (practical)",
+                "JavaScript Fundamentals (practical)",
+                "Async / Promises (practical)",
+                "Regex (practical)",
+                "Debugging (practical)"
+              ]
+            },
+            "uniqueItems": true,
+            "default": [
+              "strings",
+              "arrays",
+              "hashing",
+              "twoPointers",
+              "slidingWindow",
+              "stacksQueues",
+              "binarySearch",
+              "recursion",
+              "trees"
+            ],
+            "description": "Categories to draw challenges from. Practical categories also require \"Include Practical\"."
+          },
+          "shrimpCheck.challenge.difficulties": {
+            "type": "array",
+            "order": 3,
+            "items": {
+              "type": "string",
+              "enum": [
+                "easy",
+                "medium",
+                "hard"
+              ]
+            },
+            "uniqueItems": true,
+            "default": [
+              "easy",
+              "medium"
+            ],
+            "description": "Difficulties to include."
+          },
+          "shrimpCheck.challenge.includePractical": {
+            "type": "boolean",
+            "default": false,
+            "order": 4,
+            "description": "Include practical engineering challenges (API, JavaScript fundamentals, async, regex, debugging)."
+          },
+          "shrimpCheck.challenge.fiveStarMinutes": {
+            "type": "number",
+            "default": 10,
+            "minimum": 1,
+            "order": 5,
+            "description": "A correct solve within this many minutes earns ★★★★★."
+          },
+          "shrimpCheck.challenge.fourStarMinutes": {
+            "type": "number",
+            "default": 15,
+            "minimum": 1,
+            "order": 6,
+            "description": "A correct solve within this many minutes earns ★★★★☆."
+          },
+          "shrimpCheck.challenge.threeStarMinutes": {
+            "type": "number",
+            "default": 20,
+            "minimum": 1,
+            "order": 7,
+            "description": "A correct solve within this many minutes earns ★★★☆☆."
+          },
+          "shrimpCheck.challenge.twoStarMinutes": {
+            "type": "number",
+            "default": 30,
+            "minimum": 1,
+            "order": 8,
+            "description": "A correct solve within this many minutes earns ★★☆☆☆. Slower correct solves earn ★☆☆☆☆ — the timer never fails a challenge."
+          }
         }
       }
-    }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "build:icons": "node scripts/build-icons.cjs",
     "compile": "tsc -p ./",
-    "test": "node --test test/extension.test.js",
     "watch": "tsc -watch -p ./",
-    "package": "vsce package"
+    "test": "npm run compile && node --test test/extension.test.js test/challenges.test.js",
+    "package": "node -e \"require('fs').mkdirSync('dist',{recursive:true})\" && vsce package --out dist/",
+    "version:patch": "node scripts/version.cjs patch",
+    "version:minor": "node scripts/version.cjs minor",
+    "version:major": "node scripts/version.cjs major",
+    "release:check": "node scripts/release.cjs --check",
+    "release:publish": "node scripts/release.cjs"
   },
   "devDependencies": {
     "@types/node": "^20.19.39",
     "@types/vscode": "1.85.0",
-    "@vscode/vsce": "^3.7.1",
+    "@vscode/vsce": "^4.0.0",
     "svg2ttf": "^6.1.0",
     "svgicons2svgfont": "^15.0.1",
     "ttf2woff": "^3.0.0",

@@ -10,6 +10,8 @@ current state and a proposed direction; nothing here is implemented.
 | [EXTENDING.md](EXTENDING.md) | Recipes: new wellness check, new state, new setting, new menu entry, idle detection, history. Plus tone guidelines and a pre-ship checklist |
 | [ANIMATION.md](ANIMATION.md) | What VS Code actually permits (verified against current API docs), design principles, per-state animation proposals, order of work |
 | [ROADMAP.md](ROADMAP.md) | Versioned plan 0.1.0 → 1.0.0, an explicit not-doing list, and a clearly-labelled moonshot section |
+| [CHALLENGE_MODE.md](CHALLENGE_MODE.md) | Challenge Mode (shipped): architecture, schema, scoring, persistence, selection, limitations, Phase 2 ideas |
+| [RELEASING.md](RELEASING.md) | Version bump → commit → `npm run release:publish`, and what each preflight check does |
 
 ## The short version
 

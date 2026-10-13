@@ -2,6 +2,25 @@
 
 All notable changes to the Shrimp Check extension will be documented in this file.
 
+## Unreleased
+
+### 🧠 Challenge Mode
+- Added **Challenge Mode**: an optional, fixed-interval coding challenge that runs independently of posture and hydration reminders (off by default).
+- A notification offers the challenge; nothing opens and no clock starts until you choose **Start**, so active work is never interrupted.
+- Challenge panel with problem statement, examples, constraints, visible tests, live timer, and the current maximum star rating. Solutions are written in a real editor tab and tested in an isolated, time-limited sandbox.
+- **Run Tests** (visible tests) and **Submit** (visible + hidden tests). Correctness gates scoring: an incorrect submission is never rated, and the attempt stays open.
+- Star scoring by solve time (defaults ≤10 / 15 / 20 / 30 min, configurable). The timer never fails a challenge; a slow correct solve still earns ★.
+- **Reveal Pattern** (max ★★★★), **Show Hint** (max ★★★), **Show Approach** (max ★★) cap the rating instead of subtracting.
+- 16 original seed challenges across Strings, Arrays, Hash Maps / Sets, Two Pointers, Sliding Window, Stacks, Binary Search, Recursion, Trees, plus optional practical API, Async, and Regex challenges.
+- Practice history (stored locally) with stats: total solved, average solve time, five-star count, day streak, and score by category.
+- Simple weighted selection that favours challenges you have not seen recently and categories where you score lower.
+- **Interview Sprint** preset: core patterns, Easy + Medium, 10-minute five-star threshold, a challenge every 30 minutes. Everything stays editable.
+- New commands: Challenge Mode menu, Start Challenge, Resume Challenge, Challenge Stats. Challenge Mode also appears in the quick menu and hover panel.
+
+### 🚢 Release tooling
+- `npm run version:patch|minor|major` bumps package.json and the lockfile and turns this "Unreleased" section into the new version.
+- `npm run release:check` runs preflight checks, tests, and packaging into `dist/`. `npm run release:publish` does the same, then publishes to the Marketplace and pushes the `v<version>` tag.
+
 ## 0.0.10
 
 ### 🛠 Correctness & Hygiene

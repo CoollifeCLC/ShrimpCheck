@@ -359,7 +359,9 @@ test('status tooltip trust and accessibility metadata are scoped', (t) => {
       'shrimpCheck.snooze',
       'shrimpCheck.timerMenu',
       'shrimpCheck.hydrationMenu',
-      'shrimpCheck.openSettings'
+      'shrimpCheck.openSettings',
+      'shrimpCheck.challengeMenu',
+      'shrimpCheck.startChallenge'
     ]
   });
   assert.equal(item.tooltip.supportHtml, undefined);
@@ -370,7 +372,10 @@ test('package metadata matches supported setting floors and snooze label', () =>
     fs.readFileSync(path.resolve(__dirname, '..', 'package.json'), 'utf8')
   );
   const icons = packageJson.contributes.icons;
-  const properties = packageJson.contributes.configuration.properties;
+  const properties = Object.assign(
+    {},
+    ...packageJson.contributes.configuration.map((section) => section.properties)
+  );
   const snoozeCommand = packageJson.contributes.commands.find(
     (command) => command.command === 'shrimpCheck.snooze'
   );
@@ -386,4 +391,72 @@ test('package metadata matches supported setting floors and snooze label', () =>
   assert.equal(properties['shrimpCheck.maxMinutes'].minimum, 1);
   assert.equal(properties['shrimpCheck.cookedDelayMinutes'].minimum, 1);
   assert.equal(properties['shrimpCheck.hydrationMinutes'].minimum, 1);
+  assert.equal(properties['shrimpCheck.challenge.intervalMinutes'].minimum, 1);
+  assert.equal(properties['shrimpCheck.challenge.enabled'].default, false);
+});
+
+test('disabled Challenge Mode does not schedule or offer challenges', async (t) => {
+  const { extension, mock, timers } = loadExtension(t, {
+    maxMinutes: 30,
+    minMinutes: 30,
+    warningFraction: 0.5,
+    'challenge.enabled': false,
+    'challenge.intervalMinutes': 20
+  });
+
+  assert.equal(extension.__testing.hasChallengeTimer(), false);
+  assert.deepEqual(
+    timers.pending().map((timer) => timer.delay),
+    [15 * 60_000],
+    'only the posture timer is pending'
+  );
+  assert.equal(mock.calls.infoMessages.length, 0);
+});
+
+test('Challenge Mode respects the master Shrimp Check switch', (t) => {
+  const { extension } = loadExtension(t, { enabled: false, 'challenge.enabled': true });
+  assert.equal(extension.__testing.hasChallengeTimer(), false);
+});
+
+test('enabled Challenge Mode offers a challenge on its own fixed interval', async (t) => {
+  const { extension, mock, timers } = loadExtension(t, {
+    maxMinutes: 30,
+    minMinutes: 30,
+    warningFraction: 0.5,
+    'challenge.enabled': true,
+    'challenge.intervalMinutes': 20
+  });
+
+  assert.equal(extension.__testing.hasChallengeTimer(), true);
+  assert.deepEqual(
+    timers.pending().map((timer) => timer.delay).sort((a, b) => a - b),
+    [15 * 60_000, 20 * 60_000]
+  );
+
+  mock.responses.info.push('In 10 min');
+  await timers.fireByDelay(20 * 60_000);
+
+  assert.equal(mock.calls.infoMessages.length, 1);
+  assert.match(mock.calls.infoMessages[0], /Shrimp Challenge ready: .+ \((Easy|Medium) · .+\)/);
+  assert.equal(extension.__testing.getCurrentState(), 'ok', 'posture state untouched');
+  assert.ok(
+    timers.pending().some((timer) => timer.delay === 10 * 60_000),
+    '"In 10 min" re-offers after 10 minutes'
+  );
+  assert.equal(extension.__testing.getChallengeController().hasActiveSession(), false, 'nothing opens without Start');
+});
+
+test('ignored challenge offers do not stall the challenge loop', async (t) => {
+  const { mock, timers } = loadExtension(t, {
+    maxMinutes: 30,
+    minMinutes: 30,
+    'challenge.enabled': true,
+    'challenge.intervalMinutes': 40
+  });
+
+  mock.responses.info.push(new Promise(() => {})); // user never answers
+  void timers.fireByDelay(40 * 60_000);
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.ok(timers.pending().some((timer) => timer.delay === 40 * 60_000), 'next slot already scheduled');
 });
