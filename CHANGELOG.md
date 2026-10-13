@@ -2,7 +2,7 @@
 
 All notable changes to the Shrimp Check extension will be documented in this file.
 
-## Unreleased
+## 0.0.11
 
 ### 🧠 Challenge Mode
 - Added **Challenge Mode**: an optional, fixed-interval coding challenge that runs independently of posture and hydration reminders (off by default).
