@@ -16,8 +16,15 @@ const runner = require(path.resolve(__dirname, '..', 'out', 'challenges', 'runne
 const { getChallengeById } = require(path.resolve(__dirname, '..', 'out', 'challenges', 'catalog.js'));
 const { runChallengeTests, activeRunnerCount, cancelAllChallengeRuns, killProcessTree } = runner;
 
-/** Max tolerated host event-loop stall. Real stalls are seconds; normal noise is < 30 ms. */
-const MAX_STALL_MS = 250;
+/**
+ * Max tolerated host event-loop gap. The failure this guards against froze the
+ * host for seconds (or forever). A wall-clock heartbeat also sees OS scheduling
+ * noise on a busy Windows desktop (observed up to ~260 ms while a runner pins a
+ * core), so the threshold sits well above that. The narrower regression (a
+ * ~400 ms synchronous fork() on the host thread) is covered deterministically
+ * by the "never starts processes" test below instead of by timing.
+ */
+const MAX_STALL_MS = 1000;
 const HEARTBEAT_MS = 20;
 
 const probe = {
@@ -269,6 +276,35 @@ test('every catalog async/regular reference still behaves: gather-the-profiles p
 });
 
 // ── Process-tree cleanup (Windows: taskkill /PID <pid> /T /F) ─────────────
+
+test('the extension host thread never starts or kills processes itself (fork/spawn stay on the launcher thread)', async () => {
+  // Process creation blocks the calling thread (~400 ms per fork on Windows).
+  // Record every child_process call made from this (main) thread during a run
+  // that times out and gets its runner killed. Worker threads load their own
+  // copy of child_process, so the launcher's legitimate calls are not counted.
+  const cp = require('node:child_process');
+  const names = ['fork', 'spawn', 'spawnSync', 'exec', 'execSync', 'execFile', 'execFileSync'];
+  const original = {};
+  const calls = [];
+  for (const name of names) {
+    original[name] = cp[name];
+    cp[name] = function (...args) {
+      calls.push(`${name}(${String(args[0])})`);
+      return original[name].apply(this, args);
+    };
+  }
+  let summary;
+  try {
+    const oneTest = { id: 'probe', functionName: 'f', tests: [{ args: [1], expected: 1 }] };
+    summary = await runChallengeTests(oneTest, 'function f() { while (true) {} }', { includeHidden: true });
+    assert.ok(await waitFor(() => activeRunnerCount() === 0), 'runner teardown finished');
+  } finally {
+    Object.assign(cp, original);
+  }
+  assert.equal(summary.results[0].status, 'TIME_LIMIT_EXCEEDED');
+  assert.ok(await waitForExit(summary.runner.pid), 'runner exited');
+  assert.deepEqual(calls, [], `main-thread process calls: ${calls.join(', ')}`);
+});
 
 test('killProcessTree() removes a runner and its grandchildren', async () => {
   // parent → grandchild, both long-lived; mirrors a runner that spawned something.
