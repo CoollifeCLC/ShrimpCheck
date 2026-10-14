@@ -4,7 +4,15 @@ All notable changes to the Shrimp Check extension will be documented in this fil
 
 ## 0.1.2
 
-- TODO: describe this release
+- ### 🛡️ Challenge Mode: safe code runner - v0.1.1 Burned by transient network upload.
+- **Fixed:** an infinite loop in a challenge solution could freeze VS Code. Solutions ran inside the extension host, so a loop reached through `await`, `.then()` or `setTimeout` hung it with no timeout, and a loop that allocated memory could exhaust system memory and leave Windows unresponsive.
+- Solutions now run in a separate, disposable runner process with a hard wall-clock limit enforced by the extension. Infinite loops, unsettled promises and runaway memory end as a normal result (time limit or memory limit exceeded) instead of hanging the editor.
+- Every run gets a time limit per evaluation, a memory cap, and caps on console output and return-value size.
+- The runner is shut down after every run, including timeouts, crashes, cancellation and extension shutdown. On Windows its whole process tree is ended with `taskkill /T /F`, and a runner whose editor closes unexpectedly exits on its own.
+- Process startup happens off the editor's main thread, so Run and Submit no longer cause a visible hitch.
+- Solution code no longer has access to the editor's environment variables or Node.js APIs.
+- Run and Submit now process one run at a time; extra clicks while a run is in progress are ignored.
+- Added containment tests covering infinite loops (synchronous, after `await`, in `.then()`, in timers), unsettled promises, memory balloons, output limits, cancellation and process-tree cleanup.
 
 ## 0.1.1
 
