@@ -857,6 +857,8 @@ async function resetStreak(): Promise<void> {
 
 export function deactivate(): void {
   clearAllTimers();
+  // Kills any running Challenge Mode runner process tree synchronously.
+  challengeController?.dispose();
 }
 
 function escapeMarkdown(text: string): string {

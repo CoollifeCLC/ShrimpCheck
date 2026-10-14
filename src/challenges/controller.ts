@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { CHALLENGES, getChallengeById } from './catalog';
 import { ACTIVE_SESSION_KEY, computeStats, loadAttempts, recordAttempt } from './history';
-import { RunSummary, runChallengeTests } from './runner';
+import { RunSummary, cancelAllChallengeRuns, runChallengeTests } from './runner';
 import { renderStars } from './scoring';
 import { selectChallenge } from './selection';
 import { ChallengeSession, SessionSnapshot } from './session';
@@ -31,6 +31,9 @@ export class ChallengeController implements vscode.Disposable {
   private lastRun: ChallengeViewState['lastRun'];
   private result: ChallengeResultView | undefined;
   private readonly disposables: vscode.Disposable[] = [];
+  /** One Run/Submit at a time; extra clicks while a runner is alive are ignored. */
+  private running = false;
+  private disposed = false;
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -115,6 +118,10 @@ export class ChallengeController implements vscode.Disposable {
   }
 
   dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    // Kill any in-flight runner process tree before tearing down the UI.
+    cancelAllChallengeRuns();
     this.panel?.dispose();
     this.statsPanel?.dispose();
     for (const disposable of this.disposables) disposable.dispose();
@@ -214,9 +221,18 @@ export class ChallengeController implements vscode.Disposable {
 
   private async runTests(isSubmit: boolean): Promise<void> {
     if (!this.session || this.session.isFinished) return;
+    if (this.running) return;
+    this.running = true;
+    let summary: RunSummary;
     const challenge = this.session.challenge;
-    const source = await this.readSolution();
-    const summary: RunSummary = await runChallengeTests(challenge, source, { includeHidden: isSubmit });
+    try {
+      const source = await this.readSolution();
+      summary = await runChallengeTests(challenge, source, { includeHidden: isSubmit });
+    } finally {
+      this.running = false;
+    }
+    // Cancelled by dispose/deactivate: never record a submission for it.
+    if (this.disposed || !this.session || this.session.isFinished || this.session.challenge !== challenge) return;
     this.lastRun = { kind: isSubmit ? 'submit' : 'run', summary };
 
     if (isSubmit) {
