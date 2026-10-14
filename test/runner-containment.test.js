@@ -301,7 +301,9 @@ test('runner exits on its own when the extension host is killed mid-loop (no orp
     `const r = require(${JSON.stringify(path.resolve(__dirname, '..', 'out', 'challenges', 'runner.js'))});` +
     "r.runChallengeTests({ id: 'p', functionName: 'f', tests: [{ args: [1], expected: 1 }] }," +
     " 'function f() { return { get v() { for (;;) {} } }; }', { includeHidden: true });" +
-    "setTimeout(() => process.stdout.write(String(r.activeRunnerPids()[0]) + '\\n'), 700);";
+    // fork() alone takes ~400 ms on Windows (longer under load): report the pid once the runner exists.
+    "const t0 = Date.now(); const poll = setInterval(() => { const pid = r.activeRunnerPids()[0];" +
+    " if (pid || Date.now() - t0 > 15000) { clearInterval(poll); process.stdout.write(String(pid) + '\\n'); } }, 25);";
   const host = spawn(process.execPath, ['-e', hostScript], { stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true });
   const runnerPid = await new Promise((resolve, reject) => {
     host.stdout.once('data', (d) => resolve(Number(String(d).trim())));

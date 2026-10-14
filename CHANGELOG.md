@@ -4,39 +4,20 @@ All notable changes to the Shrimp Check extension will be documented in this fil
 
 ## 0.1.4
 
-- ### 🛡️ Challenge Mode: safe code runner - v0.1.3 Burned by transient network upload at GitHub tag. - Switched to less encumbered hotspot.
-- **Fixed:** an infinite loop in a challenge solution could freeze VS Code. Solutions ran inside the extension host, so a loop reached through `await`, `.then()` or `setTimeout` hung it with no timeout, and a loop that allocated memory could exhaust system memory and leave Windows unresponsive.
-- Solutions now run in a separate, disposable runner process with a hard wall-clock limit enforced by the extension. Infinite loops, unsettled promises and runaway memory end as a normal result (time limit or memory limit exceeded) instead of hanging the editor.
-- Every run gets a time limit per evaluation, a memory cap, and caps on console output and return-value size.
-- The runner is shut down after every run, including timeouts, crashes, cancellation and extension shutdown. On Windows its whole process tree is ended with `taskkill /T /F`, and a runner whose editor closes unexpectedly exits on its own.
-- Process startup happens off the editor's main thread, so Run and Submit no longer cause a visible hitch.
-- Solution code no longer has access to the editor's environment variables or Node.js APIs.
-- Run and Submit now process one run at a time; extra clicks while a run is in progress are ignored.
-- Added containment tests covering infinite loops (synchronous, after `await`, in `.then()`, in timers), unsettled promises, memory balloons, output limits, cancellation and process-tree cleanup.
+### 🚢 Release tooling
+- `npm run release:publish` now resumes instead of starting over. Each step checks the Marketplace, the git tag and the GitHub release first and skips what is already done, so a rerun never re-publishes, re-tags or needs a version bump.
+- Transient network failures (DNS, connection resets, timeouts, HTTP 5xx) are retried up to 4 times. Steps that are not naturally repeatable re-check remote state before each retry, so a lost response never causes a duplicate. Authentication errors are not retried.
+- Each release now also gets a GitHub release with the `.vsix` attached. It is created as a draft, its asset is verified, and it is made public only after the Marketplace accepts the version. If that last step fails, the error shows the exact `gh` commands to finish it.
+- The test suite runs its files one at a time, and the runner tests no longer depend on fixed startup timings, so slow Windows machines no longer produce spurious failures.
+- No changes to the extension itself.
 
 ## 0.1.3
 
-- ### 🛡️ Challenge Mode: safe code runner - v0.1.2 Burned by transient network upload at GitHub tag.
-- **Fixed:** an infinite loop in a challenge solution could freeze VS Code. Solutions ran inside the extension host, so a loop reached through `await`, `.then()` or `setTimeout` hung it with no timeout, and a loop that allocated memory could exhaust system memory and leave Windows unresponsive.
-- Solutions now run in a separate, disposable runner process with a hard wall-clock limit enforced by the extension. Infinite loops, unsettled promises and runaway memory end as a normal result (time limit or memory limit exceeded) instead of hanging the editor.
-- Every run gets a time limit per evaluation, a memory cap, and caps on console output and return-value size.
-- The runner is shut down after every run, including timeouts, crashes, cancellation and extension shutdown. On Windows its whole process tree is ended with `taskkill /T /F`, and a runner whose editor closes unexpectedly exits on its own.
-- Process startup happens off the editor's main thread, so Run and Submit no longer cause a visible hitch.
-- Solution code no longer has access to the editor's environment variables or Node.js APIs.
-- Run and Submit now process one run at a time; extra clicks while a run is in progress are ignored.
-- Added containment tests covering infinite loops (synchronous, after `await`, in `.then()`, in timers), unsettled promises, memory balloons, output limits, cancellation and process-tree cleanup.
+- Same extension as 0.1.1. Published again because the release script failed while pushing the git tag after the Marketplace upload had already succeeded.
 
 ## 0.1.2
 
-- ### 🛡️ Challenge Mode: safe code runner - v0.1.1 Burned by transient network upload.
-- **Fixed:** an infinite loop in a challenge solution could freeze VS Code. Solutions ran inside the extension host, so a loop reached through `await`, `.then()` or `setTimeout` hung it with no timeout, and a loop that allocated memory could exhaust system memory and leave Windows unresponsive.
-- Solutions now run in a separate, disposable runner process with a hard wall-clock limit enforced by the extension. Infinite loops, unsettled promises and runaway memory end as a normal result (time limit or memory limit exceeded) instead of hanging the editor.
-- Every run gets a time limit per evaluation, a memory cap, and caps on console output and return-value size.
-- The runner is shut down after every run, including timeouts, crashes, cancellation and extension shutdown. On Windows its whole process tree is ended with `taskkill /T /F`, and a runner whose editor closes unexpectedly exits on its own.
-- Process startup happens off the editor's main thread, so Run and Submit no longer cause a visible hitch.
-- Solution code no longer has access to the editor's environment variables or Node.js APIs.
-- Run and Submit now process one run at a time; extra clicks while a run is in progress are ignored.
-- Added containment tests covering infinite loops (synchronous, after `await`, in `.then()`, in timers), unsettled promises, memory balloons, output limits, cancellation and process-tree cleanup.
+- Same extension as 0.1.1. Published again because the release script failed while pushing the git tag after the Marketplace upload had already succeeded.
 
 ## 0.1.1
 
