@@ -2,6 +2,10 @@
 
 All notable changes to the Shrimp Check extension will be documented in this file.
 
+## 0.1.2
+
+- TODO: describe this release
+
 ## 0.1.1
 
 ### 🛡️ Challenge Mode: safe code runner
