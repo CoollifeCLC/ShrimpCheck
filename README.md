@@ -111,7 +111,7 @@ Preferred drink ☕
 
 Built with mild concern for your spine.
 
-Now helping 100+ developers avoid becoming shrimp 🦐
+Now helping 400+ developers avoid becoming shrimp 🦐
 
 🦐 Shrimp Here!
 
