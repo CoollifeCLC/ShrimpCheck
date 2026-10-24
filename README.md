@@ -3,7 +3,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/VS%20Code-Extension-007ACC?logo=visualstudiocode" />
   <img src="https://img.shields.io/badge/Built%20by-Contract%20OS-2A0B3D" />
-  <img src="https://img.shields.io/badge/Users-100%2B-22C55E" />
+  <img src="https://img.shields.io/badge/Users-400%2B-22C55E" />
 </p>
 
 <p align="center">
